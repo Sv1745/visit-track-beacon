@@ -63,10 +63,10 @@ const VisitTracker: React.FC<VisitTrackerProps> = ({ visits, setVisits, companie
   const [editingVisit, setEditingVisit] = useState<Visit | null>(null);
   const [selectedCompany, setSelectedCompany] = useState('');
   const [filters, setFilters] = useState({
-    companyId: '',
-    customerId: '',
-    actionType: '',
-    status: ''
+    companyId: 'all',
+    customerId: 'all',
+    actionType: 'all',
+    status: 'all'
   });
   const [formData, setFormData] = useState({
     companyId: '',
@@ -186,16 +186,16 @@ const VisitTracker: React.FC<VisitTrackerProps> = ({ visits, setVisits, companie
   const getFilteredVisits = () => {
     let filtered = [...visits];
 
-    if (filters.companyId) {
+    if (filters.companyId !== 'all') {
       filtered = filtered.filter(visit => visit.companyId === filters.companyId);
     }
-    if (filters.customerId) {
+    if (filters.customerId !== 'all') {
       filtered = filtered.filter(visit => visit.customerId === filters.customerId);
     }
-    if (filters.actionType) {
+    if (filters.actionType !== 'all') {
       filtered = filtered.filter(visit => visit.actionType === filters.actionType);
     }
-    if (filters.status) {
+    if (filters.status !== 'all') {
       filtered = filtered.filter(visit => visit.status === filters.status);
     }
 
@@ -234,7 +234,7 @@ const VisitTracker: React.FC<VisitTrackerProps> = ({ visits, setVisits, companie
                 <SelectValue placeholder="All companies" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All companies</SelectItem>
+                <SelectItem value="all">All companies</SelectItem>
                 {companies.map(company => (
                   <SelectItem key={company.id} value={company.id}>{company.name}</SelectItem>
                 ))}
@@ -249,7 +249,7 @@ const VisitTracker: React.FC<VisitTrackerProps> = ({ visits, setVisits, companie
                 <SelectValue placeholder="All customers" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All customers</SelectItem>
+                <SelectItem value="all">All customers</SelectItem>
                 {customers.map(customer => (
                   <SelectItem key={customer.id} value={customer.id}>{customer.name}</SelectItem>
                 ))}
@@ -264,7 +264,7 @@ const VisitTracker: React.FC<VisitTrackerProps> = ({ visits, setVisits, companie
                 <SelectValue placeholder="All actions" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All actions</SelectItem>
+                <SelectItem value="all">All actions</SelectItem>
                 {ACTION_TYPES.map(action => (
                   <SelectItem key={action} value={action}>{action}</SelectItem>
                 ))}
@@ -279,7 +279,7 @@ const VisitTracker: React.FC<VisitTrackerProps> = ({ visits, setVisits, companie
                 <SelectValue placeholder="All statuses" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All statuses</SelectItem>
+                <SelectItem value="all">All statuses</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
                 <SelectItem value="pending">Pending</SelectItem>
                 <SelectItem value="cancelled">Cancelled</SelectItem>

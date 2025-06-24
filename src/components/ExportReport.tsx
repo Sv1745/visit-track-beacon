@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -50,10 +49,10 @@ const ExportReport: React.FC<ExportReportProps> = ({ visits, companies, customer
     startDate: '',
     endDate: ''
   });
-  const [selectedCompanyType, setSelectedCompanyType] = useState('');
-  const [selectedActionType, setSelectedActionType] = useState('');
-  const [selectedCompany, setSelectedCompany] = useState('');
-  const [selectedCustomer, setSelectedCustomer] = useState('');
+  const [selectedCompanyType, setSelectedCompanyType] = useState('all');
+  const [selectedActionType, setSelectedActionType] = useState('all');
+  const [selectedCompany, setSelectedCompany] = useState('all');
+  const [selectedCustomer, setSelectedCustomer] = useState('all');
 
   const getCompanyName = (companyId: string) => {
     const company = companies.find(comp => comp.id === companyId);
@@ -82,22 +81,22 @@ const ExportReport: React.FC<ExportReportProps> = ({ visits, companies, customer
     }
 
     // Filter by company
-    if (selectedCompany) {
+    if (selectedCompany !== 'all') {
       filtered = filtered.filter(visit => visit.companyId === selectedCompany);
     }
 
     // Filter by customer
-    if (selectedCustomer) {
+    if (selectedCustomer !== 'all') {
       filtered = filtered.filter(visit => visit.customerId === selectedCustomer);
     }
 
     // Filter by company type
-    if (selectedCompanyType) {
+    if (selectedCompanyType !== 'all') {
       filtered = filtered.filter(visit => getCompanyType(visit.companyId) === selectedCompanyType);
     }
 
     // Filter by action type
-    if (selectedActionType) {
+    if (selectedActionType !== 'all') {
       filtered = filtered.filter(visit => visit.actionType === selectedActionType);
     }
 
@@ -209,7 +208,7 @@ const ExportReport: React.FC<ExportReportProps> = ({ visits, companies, customer
                   <SelectValue placeholder="All companies" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All companies</SelectItem>
+                  <SelectItem value="all">All companies</SelectItem>
                   {companies.map(company => (
                     <SelectItem key={company.id} value={company.id}>{company.name}</SelectItem>
                   ))}
@@ -224,7 +223,7 @@ const ExportReport: React.FC<ExportReportProps> = ({ visits, companies, customer
                   <SelectValue placeholder="All customers" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All customers</SelectItem>
+                  <SelectItem value="all">All customers</SelectItem>
                   {customers.map(customer => (
                     <SelectItem key={customer.id} value={customer.id}>{customer.name}</SelectItem>
                   ))}
@@ -239,7 +238,7 @@ const ExportReport: React.FC<ExportReportProps> = ({ visits, companies, customer
                   <SelectValue placeholder="All types" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All types</SelectItem>
+                  <SelectItem value="all">All types</SelectItem>
                   {companyTypes.map(type => (
                     <SelectItem key={type} value={type}>{type}</SelectItem>
                   ))}
@@ -254,7 +253,7 @@ const ExportReport: React.FC<ExportReportProps> = ({ visits, companies, customer
                   <SelectValue placeholder="All actions" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All actions</SelectItem>
+                  <SelectItem value="all">All actions</SelectItem>
                   {actionTypes.map(action => (
                     <SelectItem key={action} value={action}>{action}</SelectItem>
                   ))}
