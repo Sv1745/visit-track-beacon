@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Calendar, Users, Building2, TrendingUp, Bell, Plus, Download } from 'lucide-react';
-import { ThemeToggle } from '@/components/ThemeToggle';
+import { AuthHeader } from '@/components/auth/AuthHeader';
 import CompanyManagement from '@/components/CompanyManagement';
 import CustomerManagement from '@/components/CustomerManagement';
 import VisitTracker from '@/components/VisitTracker';
@@ -72,13 +71,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-6 py-8">
-        <div className="mb-8 flex justify-between items-center">
-          <div>
-            <h1 className="text-4xl font-bold mb-2">Visit Tracker</h1>
-            <p className="text-lg text-muted-foreground">Manage your business visits, companies, and customer relationships</p>
-          </div>
-          <ThemeToggle />
-        </div>
+        <AuthHeader />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-5 lg:w-fit lg:grid-cols-5">
