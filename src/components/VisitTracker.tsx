@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,7 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Plus, Edit, Trash2, Users, Building2, Clock, Filter } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Calendar, Plus, Edit, Trash2, Users, Building2, Clock, Filter, Table as TableIcon, Grid } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
 interface Company {
@@ -62,6 +63,7 @@ const VisitTracker: React.FC<VisitTrackerProps> = ({ visits, setVisits, companie
   const [isAddingVisit, setIsAddingVisit] = useState(false);
   const [editingVisit, setEditingVisit] = useState<Visit | null>(null);
   const [selectedCompany, setSelectedCompany] = useState('');
+  const [viewMode, setViewMode] = useState('cards');
   const [filters, setFilters] = useState({
     companyId: 'all',
     customerId: 'all',
@@ -221,10 +223,20 @@ const VisitTracker: React.FC<VisitTrackerProps> = ({ visits, setVisits, companie
       {/* Filters */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="w-5 h-5" />
-            Filters
-          </CardTitle>
+          <div className="flex justify-between items-center">
+            <CardTitle className="flex items-center gap-2">
+              <Filter className="w-5 h-5" />
+              Filters
+            </CardTitle>
+            <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value)}>
+              <ToggleGroupItem value="cards" aria-label="Card view">
+                <Grid className="w-4 h-4" />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="table" aria-label="Table view">
+                <TableIcon className="w-4 h-4" />
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="space-y-2">
@@ -419,86 +431,178 @@ const VisitTracker: React.FC<VisitTrackerProps> = ({ visits, setVisits, companie
         </Card>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {sortedVisits.map(visit => (
-          <Card key={visit.id} className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  {getCompanyLogo(visit.companyId) ? (
-                    <img 
-                      src={getCompanyLogo(visit.companyId)} 
-                      alt="Company logo" 
-                      className="w-10 h-10 object-cover rounded-lg border"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg flex items-center justify-center">
-                      <Calendar className="w-5 h-5 text-purple-600" />
+      {viewMode === 'table' ? (
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Company</TableHead>
+                  <TableHead>Customer</TableHead>
+                  <TableHead>Action</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Follow-up</TableHead>
+                  <TableHead>Notes</TableHead>
+                  <TableHead className="w-20">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedVisits.map(visit => (
+                  <TableRow key={visit.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {getCompanyLogo(visit.companyId) ? (
+                          <img 
+                            src={getCompanyLogo(visit.companyId)} 
+                            alt="Company logo" 
+                            className="w-6 h-6 object-cover rounded border"
+                          />
+                        ) : (
+                          <div className="w-6 h-6 bg-gradient-to-br from-purple-100 to-purple-200 rounded flex items-center justify-center">
+                            <Building2 className="w-3 h-3 text-purple-600" />
+                          </div>
+                        )}
+                        <span className="font-medium">{getCompanyName(visit.companyId)}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>{getCustomerName(visit.customerId)}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{visit.actionType}</Badge>
+                    </TableCell>
+                    <TableCell>{new Date(visit.visitDate).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <Badge variant={visit.status === 'completed' ? 'default' : visit.status === 'pending' ? 'secondary' : 'destructive'}>
+                        {visit.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {visit.nextFollowUp ? (
+                        <div className="flex items-center gap-1 text-sm">
+                          <Clock className="w-3 h-3" />
+                          {new Date(visit.nextFollowUp).toLocaleDateString()}
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {visit.notes ? (
+                        <span className="text-sm line-clamp-2" title={visit.notes}>
+                          {visit.notes.length > 50 ? `${visit.notes.substring(0, 50)}...` : visit.notes}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEdit(visit)}
+                          className="h-6 w-6 p-0"
+                        >
+                          <Edit className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDelete(visit.id)}
+                          className="h-6 w-6 p-0"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {sortedVisits.map(visit => (
+            <Card key={visit.id} className="hover:shadow-lg transition-shadow">
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    {getCompanyLogo(visit.companyId) ? (
+                      <img 
+                        src={getCompanyLogo(visit.companyId)} 
+                        alt="Company logo" 
+                        className="w-10 h-10 object-cover rounded-lg border"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg flex items-center justify-center">
+                        <Calendar className="w-5 h-5 text-purple-600" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-semibold text-sm truncate">
+                        {visit.actionType}
+                      </h3>
+                      <div className="text-xs text-muted-foreground space-y-1">
+                        <div className="flex items-center gap-1">
+                          <Building2 className="w-3 h-3" />
+                          <span className="truncate">{getCompanyName(visit.companyId)}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Users className="w-3 h-3" />
+                          <span className="truncate">{getCustomerName(visit.customerId)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEdit(visit)}
+                      className="h-6 w-6 p-0"
+                    >
+                      <Edit className="w-3 h-3" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDelete(visit.id)}
+                      className="h-6 w-6 p-0"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Badge variant={visit.status === 'completed' ? 'default' : visit.status === 'pending' ? 'secondary' : 'destructive'} className="text-xs">
+                      {visit.status}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(visit.visitDate).toLocaleDateString()}
+                    </span>
+                  </div>
+                  
+                  {visit.nextFollowUp && (
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock className="w-3 h-3" />
+                      <span>Follow-up: {new Date(visit.nextFollowUp).toLocaleDateString()}</span>
                     </div>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-semibold text-sm truncate">
-                      {visit.actionType}
-                    </h3>
-                    <div className="text-xs text-muted-foreground space-y-1">
-                      <div className="flex items-center gap-1">
-                        <Building2 className="w-3 h-3" />
-                        <span className="truncate">{getCompanyName(visit.companyId)}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Users className="w-3 h-3" />
-                        <span className="truncate">{getCustomerName(visit.customerId)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex gap-1">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleEdit(visit)}
-                    className="h-6 w-6 p-0"
-                  >
-                    <Edit className="w-3 h-3" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDelete(visit.id)}
-                    className="h-6 w-6 p-0"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </div>
-              </div>
 
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Badge variant={visit.status === 'completed' ? 'default' : visit.status === 'pending' ? 'secondary' : 'destructive'} className="text-xs">
-                    {visit.status}
-                  </Badge>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(visit.visitDate).toLocaleDateString()}
-                  </span>
+                  {visit.notes && (
+                    <p className="text-xs text-muted-foreground line-clamp-2">
+                      {visit.notes}
+                    </p>
+                  )}
                 </div>
-                
-                {visit.nextFollowUp && (
-                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Clock className="w-3 h-3" />
-                    <span>Follow-up: {new Date(visit.nextFollowUp).toLocaleDateString()}</span>
-                  </div>
-                )}
-
-                {visit.notes && (
-                  <p className="text-xs text-muted-foreground line-clamp-2">
-                    {visit.notes}
-                  </p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {visits.length === 0 && companies.length > 0 && customers.length > 0 && (
         <Card>
