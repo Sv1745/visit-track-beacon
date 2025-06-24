@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Calendar, Users, Building2, TrendingUp, Bell, Plus, Download } from 'lucide-react';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import CompanyManagement from '@/components/CompanyManagement';
 import CustomerManagement from '@/components/CustomerManagement';
 import VisitTracker from '@/components/VisitTracker';
@@ -69,11 +70,14 @@ const Index = () => {
   }, [pendingFollowUps]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+    <div className="min-h-screen bg-background">
       <div className="container mx-auto px-6 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Visit Tracker</h1>
-          <p className="text-lg text-gray-600">Manage your business visits, companies, and customer relationships</p>
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-4xl font-bold mb-2">Visit Tracker</h1>
+            <p className="text-lg text-muted-foreground">Manage your business visits, companies, and customer relationships</p>
+          </div>
+          <ThemeToggle />
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -102,9 +106,9 @@ const Index = () => {
 
           <TabsContent value="dashboard" className="space-y-6">
             {pendingFollowUps > 0 && (
-              <Alert className="border-orange-200 bg-orange-50">
+              <Alert className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
                 <Bell className="h-4 w-4 text-orange-600" />
-                <AlertDescription className="text-orange-800">
+                <AlertDescription className="text-orange-800 dark:text-orange-200">
                   <strong>Reminder:</strong> You have {pendingFollowUps} follow-up(s) due in the next 2 days!
                 </AlertDescription>
               </Alert>

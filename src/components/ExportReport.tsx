@@ -9,25 +9,63 @@ import { Badge } from '@/components/ui/badge';
 import { Download, FileText, Calendar, Filter } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 
-const ExportReport = ({ visits, companies, customers }) => {
+interface Company {
+  id: string;
+  name: string;
+  type: string;
+  logo?: string;
+  createdAt: string;
+}
+
+interface Customer {
+  id: string;
+  name: string;
+  companyId: string;
+  position?: string;
+  email?: string;
+  phone?: string;
+  createdAt: string;
+}
+
+interface Visit {
+  id: string;
+  companyId: string;
+  customerId: string;
+  actionType: string;
+  visitDate: string;
+  notes?: string;
+  nextFollowUp?: string;
+  status: string;
+  createdAt: string;
+}
+
+interface ExportReportProps {
+  visits: Visit[];
+  companies: Company[];
+  customers: Customer[];
+}
+
+const ExportReport: React.FC<ExportReportProps> = ({ visits, companies, customers }) => {
   const [dateRange, setDateRange] = useState({
     startDate: '',
     endDate: ''
   });
   const [selectedCompanyType, setSelectedCompanyType] = useState('');
   const [selectedActionType, setSelectedActionType] = useState('');
+  const [selectedCompany, setSelectedCompany] = useState('');
+  const [selectedCustomer, setSelectedCustomer] = useState('');
 
-  const getCompanyName = (companyId) => {
+  const getCompanyName = (companyId: string) => {
     const company = companies.find(comp => comp.id === companyId);
     return company ? company.name : 'Unknown Company';
   };
 
-  const getCompanyType = (companyId) => {
+  const getCompanyType = (companyId: string) => {
     const company = companies.find(comp => comp.id === companyId);
     return company ? company.type : 'Unknown Type';
   };
 
-  const getCustomerName = (customerId) => {
+  const getCustomerName = (customerId: string) => {
     const customer = customers.find(cust => cust.id === customerId);
     return customer ? customer.name : 'Unknown Customer';
   };
@@ -43,6 +81,16 @@ const ExportReport = ({ visits, companies, customers }) => {
       filtered = filtered.filter(visit => new Date(visit.visitDate) <= new Date(dateRange.endDate));
     }
 
+    // Filter by company
+    if (selectedCompany) {
+      filtered = filtered.filter(visit => visit.companyId === selectedCompany);
+    }
+
+    // Filter by customer
+    if (selectedCustomer) {
+      filtered = filtered.filter(visit => visit.customerId === selectedCustomer);
+    }
+
     // Filter by company type
     if (selectedCompanyType) {
       filtered = filtered.filter(visit => getCompanyType(visit.companyId) === selectedCompanyType);
@@ -53,7 +101,7 @@ const ExportReport = ({ visits, companies, customers }) => {
       filtered = filtered.filter(visit => visit.actionType === selectedActionType);
     }
 
-    return filtered.sort((a, b) => new Date(b.visitDate) - new Date(a.visitDate));
+    return filtered.sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime());
   };
 
   const exportToCSV = () => {
@@ -122,7 +170,7 @@ const ExportReport = ({ visits, companies, customers }) => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">Export Reports</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Export Reports</h2>
       </div>
 
       <Card>
@@ -133,7 +181,7 @@ const ExportReport = ({ visits, companies, customers }) => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="startDate">Start Date</Label>
               <Input
@@ -152,6 +200,36 @@ const ExportReport = ({ visits, companies, customers }) => {
                 value={dateRange.endDate}
                 onChange={(e) => setDateRange(prev => ({ ...prev, endDate: e.target.value }))}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="company">Company</Label>
+              <Select value={selectedCompany} onValueChange={setSelectedCompany}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All companies" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All companies</SelectItem>
+                  {companies.map(company => (
+                    <SelectItem key={company.id} value={company.id}>{company.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="customer">Customer</Label>
+              <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All customers" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All customers</SelectItem>
+                  {customers.map(customer => (
+                    <SelectItem key={customer.id} value={customer.id}>{customer.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
@@ -186,7 +264,7 @@ const ExportReport = ({ visits, companies, customers }) => {
           </div>
 
           <div className="flex items-center justify-between pt-4 border-t">
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-muted-foreground">
               {filteredVisits.length} visit(s) match your criteria
             </div>
             <Button onClick={exportToCSV} className="flex items-center gap-2" disabled={filteredVisits.length === 0}>
@@ -207,14 +285,14 @@ const ExportReport = ({ visits, companies, customers }) => {
         <CardContent>
           {filteredVisits.length === 0 ? (
             <div className="text-center py-8">
-              <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No visits found</h3>
-              <p className="text-gray-500">Adjust your filter criteria to see visits</p>
+              <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">No visits found</h3>
+              <p className="text-muted-foreground">Adjust your filter criteria to see visits</p>
             </div>
           ) : (
             <div className="space-y-3 max-h-96 overflow-y-auto">
               {filteredVisits.slice(0, 10).map(visit => (
-                <div key={visit.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div key={visit.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <span className="font-medium">{getCompanyName(visit.companyId)}</span>
@@ -222,7 +300,7 @@ const ExportReport = ({ visits, companies, customers }) => {
                         {getCompanyType(visit.companyId)}
                       </Badge>
                     </div>
-                    <div className="text-sm text-gray-600">
+                    <div className="text-sm text-muted-foreground">
                       {getCustomerName(visit.customerId)} • {visit.actionType} • {new Date(visit.visitDate).toLocaleDateString()}
                     </div>
                   </div>
@@ -232,7 +310,7 @@ const ExportReport = ({ visits, companies, customers }) => {
                 </div>
               ))}
               {filteredVisits.length > 10 && (
-                <div className="text-center text-sm text-gray-500 pt-2">
+                <div className="text-center text-sm text-muted-foreground pt-2">
                   And {filteredVisits.length - 10} more visits...
                 </div>
               )}
@@ -244,9 +322,9 @@ const ExportReport = ({ visits, companies, customers }) => {
       {visits.length === 0 && (
         <Card>
           <CardContent className="text-center py-12">
-            <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No visits to export</h3>
-            <p className="text-gray-500">Start recording visits to generate reports</p>
+            <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium mb-2">No visits to export</h3>
+            <p className="text-muted-foreground">Start recording visits to generate reports</p>
           </CardContent>
         </Card>
       )}
