@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -6,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Calendar, Users, Building2, TrendingUp, Bell, Plus, Download } from 'lucide-react';
+import { Calendar, Users, Building2, TrendingUp, Bell, Plus, Download, Phone, Clock, AlertCircle } from 'lucide-react';
 import { AuthHeader } from '@/components/auth/AuthHeader';
 import CompanyManagement from '@/components/CompanyManagement';
 import CustomerManagement from '@/components/CustomerManagement';
@@ -27,14 +26,44 @@ const Index = () => {
   const totalCompanies = companies.length;
   const totalCustomers = customers.length;
   const totalVisits = visits.length;
-  const pendingFollowUps = visits.filter(visit => {
-    if (!visit.next_follow_up) return false;
+  
+  // Follow-up analysis
+  const today = new Date();
+  const followUpAnalysis = visits.reduce((acc, visit) => {
+    if (!visit.next_follow_up) return acc;
+    
     const followUpDate = new Date(visit.next_follow_up);
-    const today = new Date();
     const diffTime = followUpDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays <= 2 && diffDays >= 0;
-  }).length;
+    
+    if (diffDays < 0) {
+      acc.overdue++;
+    } else if (diffDays === 0) {
+      acc.today++;
+    } else if (diffDays <= 2) {
+      acc.upcoming++;
+    } else {
+      acc.scheduled++;
+    }
+    
+    return acc;
+  }, { overdue: 0, today: 0, upcoming: 0, scheduled: 0 });
+
+  // Action type analysis for summary
+  const actionSummary = visits.reduce((acc, visit) => {
+    if (visit.action_type === 'Call') {
+      acc.calls++;
+    } else if (visit.action_type.includes('Follow-up')) {
+      acc.followups++;
+    } else if (visit.action_type === 'Meeting') {
+      acc.meetings++;
+    } else {
+      acc.other++;
+    }
+    return acc;
+  }, { calls: 0, followups: 0, meetings: 0, other: 0 });
+
+  const pendingFollowUps = followUpAnalysis.overdue + followUpAnalysis.today + followUpAnalysis.upcoming;
 
   // Company type distribution
   const companyTypeData = companies.reduce((acc, company) => {
@@ -65,7 +94,7 @@ const Index = () => {
     if (pendingFollowUps > 0) {
       toast({
         title: "Reminder Alert",
-        description: `You have ${pendingFollowUps} follow-up(s) due in the next 2 days!`,
+        description: `You have ${pendingFollowUps} follow-up(s) that need attention!`,
         variant: "default",
       });
     }
@@ -77,7 +106,7 @@ const Index = () => {
         <AuthHeader />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5 lg:w-fit lg:grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6 lg:w-fit lg:grid-cols-6">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4" />
               Dashboard
@@ -94,6 +123,10 @@ const Index = () => {
               <Calendar className="w-4 h-4" />
               Visits
             </TabsTrigger>
+            <TabsTrigger value="calendar" className="flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              Calendar
+            </TabsTrigger>
             <TabsTrigger value="reports" className="flex items-center gap-2">
               <Download className="w-4 h-4" />
               Reports
@@ -105,7 +138,7 @@ const Index = () => {
               <Alert className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
                 <Bell className="h-4 w-4 text-orange-600" />
                 <AlertDescription className="text-orange-800 dark:text-orange-200">
-                  <strong>Reminder:</strong> You have {pendingFollowUps} follow-up(s) due in the next 2 days!
+                  <strong>Reminder:</strong> You have {pendingFollowUps} follow-up(s) that need attention!
                 </AlertDescription>
               </Alert>
             )}
@@ -151,6 +184,91 @@ const Index = () => {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Action Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Calls to Make</CardTitle>
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{actionSummary.calls}</div>
+                  <p className="text-xs text-muted-foreground">Total calls recorded</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Follow-ups</CardTitle>
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{actionSummary.followups}</div>
+                  <p className="text-xs text-muted-foreground">Follow-up actions</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Meetings</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{actionSummary.meetings}</div>
+                  <p className="text-xs text-muted-foreground">Meetings scheduled</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Other Actions</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{actionSummary.other}</div>
+                  <p className="text-xs text-muted-foreground">Other activities</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Follow-up Status Cards */}
+            {pendingFollowUps > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-red-800 dark:text-red-200">Overdue</CardTitle>
+                    <AlertCircle className="h-4 w-4 text-red-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-red-700 dark:text-red-300">{followUpAnalysis.overdue}</div>
+                    <p className="text-xs text-red-600 dark:text-red-400">Need immediate attention</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-orange-800 dark:text-orange-200">Due Today</CardTitle>
+                    <Clock className="h-4 w-4 text-orange-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-orange-700 dark:text-orange-300">{followUpAnalysis.today}</div>
+                    <p className="text-xs text-orange-600 dark:text-orange-400">Due today</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-yellow-800 dark:text-yellow-200">Upcoming</CardTitle>
+                    <Bell className="h-4 w-4 text-yellow-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-yellow-700 dark:text-yellow-300">{followUpAnalysis.upcoming}</div>
+                    <p className="text-xs text-yellow-600 dark:text-yellow-400">Within 2 days</p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
@@ -238,11 +356,132 @@ const Index = () => {
             <VisitTracker />
           </TabsContent>
 
+          <TabsContent value="calendar">
+            <CalendarView visits={visits} companies={companies} customers={customers} />
+          </TabsContent>
+
           <TabsContent value="reports">
             <ExportReport visits={visits} companies={companies} customers={customers} />
           </TabsContent>
         </Tabs>
       </div>
+    </div>
+  );
+};
+
+const CalendarView = ({ visits, companies, customers }) => {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  
+  const getEventsForDate = (date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    return visits.filter(visit => {
+      if (!visit.next_follow_up) return false;
+      return visit.next_follow_up === dateStr;
+    });
+  };
+
+  const getCompanyName = (companyId) => {
+    const company = companies.find(comp => comp.id === companyId);
+    return company ? company.name : 'Unknown Company';
+  };
+
+  const getCustomerName = (customerId) => {
+    const customer = customers.find(cust => cust.id === customerId);
+    return customer ? customer.name : 'Unknown Customer';
+  };
+
+  const generateCalendarDays = () => {
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startDate = new Date(firstDay);
+    startDate.setDate(startDate.getDate() - firstDay.getDay());
+    
+    const days = [];
+    const current = new Date(startDate);
+    
+    for (let i = 0; i < 42; i++) {
+      days.push(new Date(current));
+      current.setDate(current.getDate() + 1);
+    }
+    
+    return days;
+  };
+
+  const days = generateCalendarDays();
+  const monthNames = ["January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Follow-up Calendar</h2>
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="outline" 
+            onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1))}
+          >
+            Previous
+          </Button>
+          <h3 className="text-lg font-semibold">
+            {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
+          </h3>
+          <Button 
+            variant="outline" 
+            onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1))}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+
+      <Card>
+        <CardContent className="p-6">
+          <div className="grid grid-cols-7 gap-2 mb-4">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+              <div key={day} className="text-center font-semibold text-sm p-2">
+                {day}
+              </div>
+            ))}
+          </div>
+          
+          <div className="grid grid-cols-7 gap-2">
+            {days.map((day, index) => {
+              const events = getEventsForDate(day);
+              const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+              const isToday = day.toDateString() === new Date().toDateString();
+              
+              return (
+                <div 
+                  key={index}
+                  className={`min-h-[80px] p-2 border rounded-lg ${
+                    isCurrentMonth ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800'
+                  } ${isToday ? 'ring-2 ring-blue-500' : ''}`}
+                >
+                  <div className={`text-sm font-medium mb-1 ${
+                    isCurrentMonth ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400'
+                  }`}>
+                    {day.getDate()}
+                  </div>
+                  
+                  <div className="space-y-1">
+                    {events.map((visit, eventIndex) => (
+                      <div 
+                        key={eventIndex}
+                        className="text-xs p-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded truncate"
+                        title={`${visit.action_type} - ${getCompanyName(visit.company_id)} - ${getCustomerName(visit.customer_id)}`}
+                      >
+                        {visit.action_type}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

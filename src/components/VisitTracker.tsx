@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,11 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Calendar, Plus, Edit, Trash2, Users, Building2, Clock, Filter, Table as TableIcon, Grid } from 'lucide-react';
+import { Calendar, Plus, Edit, Trash2, Users, Building2, Clock, Filter, Table as TableIcon, Grid, AlertCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { useVisits } from '@/hooks/useVisits';
+import { useVisits, Visit } from '@/hooks/useVisits';
 import { useCompanies } from '@/hooks/useCompanies';
 import { useCustomers } from '@/hooks/useCustomers';
+import VisitDetailsModal from './VisitDetailsModal';
 
 const ACTION_TYPES = [
   'Call',
@@ -34,6 +34,8 @@ const VisitTracker = () => {
   const [editingVisit, setEditingVisit] = useState(null);
   const [selectedCompany, setSelectedCompany] = useState('');
   const [viewMode, setViewMode] = useState('cards');
+  const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [filters, setFilters] = useState({
     company_id: 'all',
     customer_id: 'all',
@@ -135,6 +137,11 @@ const VisitTracker = () => {
     }
   };
 
+  const handleCardClick = (visit: Visit) => {
+    setSelectedVisit(visit);
+    setIsModalOpen(true);
+  };
+
   const getCompanyName = (companyId) => {
     const company = companies.find(comp => comp.id === companyId);
     return company ? company.name : 'Unknown Company';
@@ -181,6 +188,20 @@ const VisitTracker = () => {
   };
 
   const sortedVisits = getFilteredVisits();
+
+  const getFollowUpStatus = (followUpDate: string) => {
+    if (!followUpDate) return null;
+    
+    const today = new Date();
+    const followUp = new Date(followUpDate);
+    const diffTime = followUp.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return { status: 'overdue', days: Math.abs(diffDays) };
+    if (diffDays === 0) return { status: 'today', days: 0 };
+    if (diffDays <= 2) return { status: 'urgent', days: diffDays };
+    return { status: 'scheduled', days: diffDays };
+  };
 
   return (
     <div className="space-y-6">
@@ -410,173 +431,222 @@ const VisitTracker = () => {
       {viewMode === 'table' ? (
         <Card>
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Customer</TableHead>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Follow-up</TableHead>
-                  <TableHead>Notes</TableHead>
-                  <TableHead className="w-20">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedVisits.map(visit => (
-                  <TableRow key={visit.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        {getCompanyLogo(visit.company_id) ? (
-                          <img 
-                            src={getCompanyLogo(visit.company_id)} 
-                            alt="Company logo" 
-                            className="w-6 h-6 object-cover rounded border"
-                          />
-                        ) : (
-                          <div className="w-6 h-6 bg-gradient-to-br from-purple-100 to-purple-200 rounded flex items-center justify-center">
-                            <Building2 className="w-3 h-3 text-purple-600" />
-                          </div>
-                        )}
-                        <span className="font-medium">{getCompanyName(visit.company_id)}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{getCustomerName(visit.customer_id)}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{visit.action_type}</Badge>
-                    </TableCell>
-                    <TableCell>{new Date(visit.visit_date).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <Badge variant={visit.status === 'completed' ? 'default' : visit.status === 'pending' ? 'secondary' : 'destructive'}>
-                        {visit.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {visit.next_follow_up ? (
-                        <div className="flex items-center gap-1 text-sm">
-                          <Clock className="w-3 h-3" />
-                          {new Date(visit.next_follow_up).toLocaleDateString()}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {visit.notes ? (
-                        <span className="text-sm line-clamp-2" title={visit.notes}>
-                          {visit.notes.length > 50 ? `${visit.notes.substring(0, 50)}...` : visit.notes}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEdit(visit)}
-                          className="h-6 w-6 p-0"
-                        >
-                          <Edit className="w-3 h-3" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDelete(visit.id)}
-                          className="h-6 w-6 p-0"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[150px]">Company</TableHead>
+                    <TableHead className="min-w-[120px]">Customer</TableHead>
+                    <TableHead className="min-w-[100px]">Action</TableHead>
+                    <TableHead className="min-w-[100px]">Date</TableHead>
+                    <TableHead className="min-w-[80px]">Status</TableHead>
+                    <TableHead className="min-w-[150px]">Next Follow-up</TableHead>
+                    <TableHead className="min-w-[200px]">Notes</TableHead>
+                    <TableHead className="w-20">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {sortedVisits.map(visit => {
+                    const followUpStatus = getFollowUpStatus(visit.next_follow_up);
+                    return (
+                      <TableRow key={visit.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleCardClick(visit)}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {getCompanyLogo(visit.company_id) ? (
+                              <img 
+                                src={getCompanyLogo(visit.company_id)} 
+                                alt="Company logo" 
+                                className="w-6 h-6 object-cover rounded border"
+                              />
+                            ) : (
+                              <div className="w-6 h-6 bg-gradient-to-br from-purple-100 to-purple-200 rounded flex items-center justify-center">
+                                <Building2 className="w-3 h-3 text-purple-600" />
+                              </div>
+                            )}
+                            <span className="font-medium">{getCompanyName(visit.company_id)}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{getCustomerName(visit.customer_id)}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{visit.action_type}</Badge>
+                        </TableCell>
+                        <TableCell>{new Date(visit.visit_date).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <Badge variant={visit.status === 'completed' ? 'default' : visit.status === 'pending' ? 'secondary' : 'destructive'}>
+                            {visit.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {visit.next_follow_up ? (
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1 text-sm">
+                                <Clock className="w-3 h-3" />
+                                {new Date(visit.next_follow_up).toLocaleDateString()}
+                              </div>
+                              {followUpStatus && (
+                                <Badge 
+                                  variant={
+                                    followUpStatus.status === 'overdue' ? 'destructive' :
+                                    followUpStatus.status === 'today' ? 'default' :
+                                    followUpStatus.status === 'urgent' ? 'secondary' :
+                                    'outline'
+                                  }
+                                  className="text-xs"
+                                >
+                                  {followUpStatus.status === 'overdue' ? `${followUpStatus.days}d overdue` :
+                                   followUpStatus.status === 'today' ? 'Today' :
+                                   followUpStatus.status === 'urgent' ? `${followUpStatus.days}d left` :
+                                   `${followUpStatus.days}d`}
+                                </Badge>
+                              )}
+                            </div>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {visit.notes ? (
+                            <span className="text-sm line-clamp-2" title={visit.notes}>
+                              {visit.notes.length > 50 ? `${visit.notes.substring(0, 50)}...` : visit.notes}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEdit(visit)}
+                              className="h-6 w-6 p-0"
+                            >
+                              <Edit className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDelete(visit.id)}
+                              className="h-6 w-6 p-0"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {sortedVisits.map(visit => (
-            <Card key={visit.id} className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    {getCompanyLogo(visit.company_id) ? (
-                      <img 
-                        src={getCompanyLogo(visit.company_id)} 
-                        alt="Company logo" 
-                        className="w-10 h-10 object-cover rounded-lg border"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg flex items-center justify-center">
-                        <Calendar className="w-5 h-5 text-purple-600" />
+          {sortedVisits.map(visit => {
+            const followUpStatus = getFollowUpStatus(visit.next_follow_up);
+            return (
+              <Card 
+                key={visit.id} 
+                className="hover:shadow-lg transition-shadow cursor-pointer" 
+                onClick={() => handleCardClick(visit)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      {getCompanyLogo(visit.company_id) ? (
+                        <img 
+                          src={getCompanyLogo(visit.company_id)} 
+                          alt="Company logo" 
+                          className="w-10 h-10 object-cover rounded-lg border"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg flex items-center justify-center">
+                          <Calendar className="w-5 h-5 text-purple-600" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-sm truncate">
+                          {visit.action_type}
+                        </h3>
+                        <div className="text-xs text-muted-foreground space-y-1">
+                          <div className="flex items-center gap-1">
+                            <Building2 className="w-3 h-3" />
+                            <span className="truncate">{getCompanyName(visit.company_id)}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Users className="w-3 h-3" />
+                            <span className="truncate">{getCustomerName(visit.customer_id)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleEdit(visit)}
+                        className="h-6 w-6 p-0"
+                      >
+                        <Edit className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDelete(visit.id)}
+                        className="h-6 w-6 p-0"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Badge variant={visit.status === 'completed' ? 'default' : visit.status === 'pending' ? 'secondary' : 'destructive'} className="text-xs">
+                        {visit.status}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(visit.visit_date).toLocaleDateString()}
+                      </span>
+                    </div>
+                    
+                    {visit.next_follow_up && (
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="w-3 h-3" />
+                          <span>Follow-up: {new Date(visit.next_follow_up).toLocaleDateString()}</span>
+                        </div>
+                        {followUpStatus && (
+                          <Badge 
+                            variant={
+                              followUpStatus.status === 'overdue' ? 'destructive' :
+                              followUpStatus.status === 'today' ? 'default' :
+                              followUpStatus.status === 'urgent' ? 'secondary' :
+                              'outline'
+                            }
+                            className="text-xs flex items-center gap-1"
+                          >
+                            {followUpStatus.status === 'overdue' && <AlertCircle className="w-3 h-3" />}
+                            {followUpStatus.status === 'overdue' ? `${followUpStatus.days}d overdue` :
+                             followUpStatus.status === 'today' ? 'Today' :
+                             followUpStatus.status === 'urgent' ? `${followUpStatus.days}d left` :
+                             `${followUpStatus.days}d`}
+                          </Badge>
+                        )}
                       </div>
                     )}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-sm truncate">
-                        {visit.action_type}
-                      </h3>
-                      <div className="text-xs text-muted-foreground space-y-1">
-                        <div className="flex items-center gap-1">
-                          <Building2 className="w-3 h-3" />
-                          <span className="truncate">{getCompanyName(visit.company_id)}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Users className="w-3 h-3" />
-                          <span className="truncate">{getCustomerName(visit.customer_id)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEdit(visit)}
-                      className="h-6 w-6 p-0"
-                    >
-                      <Edit className="w-3 h-3" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDelete(visit.id)}
-                      className="h-6 w-6 p-0"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
-                  </div>
-                </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Badge variant={visit.status === 'completed' ? 'default' : visit.status === 'pending' ? 'secondary' : 'destructive'} className="text-xs">
-                      {visit.status}
-                    </Badge>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(visit.visit_date).toLocaleDateString()}
-                    </span>
+                    {visit.notes && (
+                      <p className="text-xs text-muted-foreground line-clamp-2">
+                        {visit.notes}
+                      </p>
+                    )}
                   </div>
-                  
-                  {visit.next_follow_up && (
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Clock className="w-3 h-3" />
-                      <span>Follow-up: {new Date(visit.next_follow_up).toLocaleDateString()}</span>
-                    </div>
-                  )}
-
-                  {visit.notes && (
-                    <p className="text-xs text-muted-foreground line-clamp-2">
-                      {visit.notes}
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
