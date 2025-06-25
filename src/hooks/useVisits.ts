@@ -11,6 +11,7 @@ export interface Visit {
   visit_date: string;
   notes?: string;
   next_follow_up?: string;
+  next_action_type?: string;
   status: string;
   created_at: string;
 }

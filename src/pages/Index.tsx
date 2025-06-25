@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -27,10 +28,16 @@ const Index = () => {
   const totalCustomers = customers.length;
   const totalVisits = visits.length;
   
-  // Follow-up analysis
+  // Follow-up analysis - only count non-completed visits as overdue
   const today = new Date();
   const followUpAnalysis = visits.reduce((acc, visit) => {
     if (!visit.next_follow_up) return acc;
+    
+    // Don't count overdue if status is completed
+    if (visit.status === 'completed') {
+      acc.scheduled++;
+      return acc;
+    }
     
     const followUpDate = new Date(visit.next_follow_up);
     const diffTime = followUpDate.getTime() - today.getTime();
@@ -56,6 +63,22 @@ const Index = () => {
     } else if (visit.action_type.includes('Follow-up')) {
       acc.followups++;
     } else if (visit.action_type === 'Meeting') {
+      acc.meetings++;
+    } else {
+      acc.other++;
+    }
+    return acc;
+  }, { calls: 0, followups: 0, meetings: 0, other: 0 });
+
+  // Next action analysis
+  const nextActionSummary = visits.reduce((acc, visit) => {
+    if (!visit.next_action_type || visit.status === 'completed') return acc;
+    
+    if (visit.next_action_type === 'Call') {
+      acc.calls++;
+    } else if (visit.next_action_type.includes('Follow-up')) {
+      acc.followups++;
+    } else if (visit.next_action_type === 'Meeting') {
       acc.meetings++;
     } else {
       acc.other++;
@@ -185,48 +208,48 @@ const Index = () => {
               </Card>
             </div>
 
-            {/* Action Summary Cards */}
+            {/* Next Action Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Calls to Make</CardTitle>
+                  <CardTitle className="text-sm font-medium text-foreground">Next Calls</CardTitle>
                   <Phone className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{actionSummary.calls}</div>
-                  <p className="text-xs text-muted-foreground">Total calls recorded</p>
+                  <div className="text-2xl font-bold text-foreground">{nextActionSummary.calls}</div>
+                  <p className="text-xs text-muted-foreground">Scheduled calls</p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Follow-ups</CardTitle>
+                  <CardTitle className="text-sm font-medium text-foreground">Next Follow-ups</CardTitle>
                   <Clock className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{actionSummary.followups}</div>
-                  <p className="text-xs text-muted-foreground">Follow-up actions</p>
+                  <div className="text-2xl font-bold text-foreground">{nextActionSummary.followups}</div>
+                  <p className="text-xs text-muted-foreground">Pending follow-ups</p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Meetings</CardTitle>
+                  <CardTitle className="text-sm font-medium text-foreground">Next Meetings</CardTitle>
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{actionSummary.meetings}</div>
-                  <p className="text-xs text-muted-foreground">Meetings scheduled</p>
+                  <div className="text-2xl font-bold text-foreground">{nextActionSummary.meetings}</div>
+                  <p className="text-xs text-muted-foreground">Upcoming meetings</p>
                 </CardContent>
               </Card>
 
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Other Actions</CardTitle>
+                  <CardTitle className="text-sm font-medium text-foreground">Other Actions</CardTitle>
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{actionSummary.other}</div>
+                  <div className="text-2xl font-bold text-foreground">{nextActionSummary.other}</div>
                   <p className="text-xs text-muted-foreground">Other activities</p>
                 </CardContent>
               </Card>
@@ -273,7 +296,7 @@ const Index = () => {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
                 <CardHeader>
-                  <CardTitle>Companies by Type</CardTitle>
+                  <CardTitle className="text-foreground">Companies by Type</CardTitle>
                   <CardDescription>Distribution of companies across different industries</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -291,7 +314,7 @@ const Index = () => {
 
               <Card>
                 <CardHeader>
-                  <CardTitle>Visit Actions</CardTitle>
+                  <CardTitle className="text-foreground">Visit Actions</CardTitle>
                   <CardDescription>Breakdown of visit types and actions</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -320,7 +343,7 @@ const Index = () => {
 
             <Card>
               <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
+                <CardTitle className="text-foreground">Quick Actions</CardTitle>
                 <CardDescription>Get started with common tasks</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-4">
@@ -416,7 +439,7 @@ const CalendarView = ({ visits, companies, customers }) => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Follow-up Calendar</h2>
+        <h2 className="text-2xl font-bold text-foreground">Follow-up Calendar</h2>
         <div className="flex items-center gap-4">
           <Button 
             variant="outline" 
@@ -424,7 +447,7 @@ const CalendarView = ({ visits, companies, customers }) => {
           >
             Previous
           </Button>
-          <h3 className="text-lg font-semibold">
+          <h3 className="text-lg font-semibold text-foreground">
             {monthNames[currentDate.getMonth()]} {currentDate.getFullYear()}
           </h3>
           <Button 
@@ -440,7 +463,7 @@ const CalendarView = ({ visits, companies, customers }) => {
         <CardContent className="p-6">
           <div className="grid grid-cols-7 gap-2 mb-4">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-              <div key={day} className="text-center font-semibold text-sm p-2">
+              <div key={day} className="text-center font-semibold text-sm p-2 text-foreground">
                 {day}
               </div>
             ))}
@@ -456,11 +479,11 @@ const CalendarView = ({ visits, companies, customers }) => {
                 <div 
                   key={index}
                   className={`min-h-[80px] p-2 border rounded-lg ${
-                    isCurrentMonth ? 'bg-white dark:bg-gray-900' : 'bg-gray-50 dark:bg-gray-800'
+                    isCurrentMonth ? 'bg-card' : 'bg-muted'
                   } ${isToday ? 'ring-2 ring-blue-500' : ''}`}
                 >
                   <div className={`text-sm font-medium mb-1 ${
-                    isCurrentMonth ? 'text-gray-900 dark:text-gray-100' : 'text-gray-400'
+                    isCurrentMonth ? 'text-foreground' : 'text-muted-foreground'
                   }`}>
                     {day.getDate()}
                   </div>
@@ -470,9 +493,9 @@ const CalendarView = ({ visits, companies, customers }) => {
                       <div 
                         key={eventIndex}
                         className="text-xs p-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded truncate"
-                        title={`${visit.action_type} - ${getCompanyName(visit.company_id)} - ${getCustomerName(visit.customer_id)}`}
+                        title={`${visit.next_action_type || visit.action_type} - ${getCompanyName(visit.company_id)} - ${getCustomerName(visit.customer_id)}`}
                       >
-                        {visit.action_type}
+                        {visit.next_action_type || visit.action_type}
                       </div>
                     ))}
                   </div>
