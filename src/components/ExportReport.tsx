@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -13,29 +14,29 @@ interface Company {
   name: string;
   type: string;
   logo?: string;
-  createdAt: string;
+  created_at: string;
 }
 
 interface Customer {
   id: string;
   name: string;
-  companyId: string;
+  company_id: string;
   position?: string;
   email?: string;
   phone?: string;
-  createdAt: string;
+  created_at: string;
 }
 
 interface Visit {
   id: string;
-  companyId: string;
-  customerId: string;
-  actionType: string;
-  visitDate: string;
+  company_id: string;
+  customer_id: string;
+  action_type: string;
+  visit_date: string;
   notes?: string;
-  nextFollowUp?: string;
+  next_follow_up?: string;
   status: string;
-  createdAt: string;
+  created_at: string;
 }
 
 interface ExportReportProps {
@@ -74,33 +75,33 @@ const ExportReport: React.FC<ExportReportProps> = ({ visits, companies, customer
 
     // Filter by date range
     if (dateRange.startDate) {
-      filtered = filtered.filter(visit => new Date(visit.visitDate) >= new Date(dateRange.startDate));
+      filtered = filtered.filter(visit => new Date(visit.visit_date) >= new Date(dateRange.startDate));
     }
     if (dateRange.endDate) {
-      filtered = filtered.filter(visit => new Date(visit.visitDate) <= new Date(dateRange.endDate));
+      filtered = filtered.filter(visit => new Date(visit.visit_date) <= new Date(dateRange.endDate));
     }
 
     // Filter by company
     if (selectedCompany !== 'all') {
-      filtered = filtered.filter(visit => visit.companyId === selectedCompany);
+      filtered = filtered.filter(visit => visit.company_id === selectedCompany);
     }
 
     // Filter by customer
     if (selectedCustomer !== 'all') {
-      filtered = filtered.filter(visit => visit.customerId === selectedCustomer);
+      filtered = filtered.filter(visit => visit.customer_id === selectedCustomer);
     }
 
     // Filter by company type
     if (selectedCompanyType !== 'all') {
-      filtered = filtered.filter(visit => getCompanyType(visit.companyId) === selectedCompanyType);
+      filtered = filtered.filter(visit => getCompanyType(visit.company_id) === selectedCompanyType);
     }
 
     // Filter by action type
     if (selectedActionType !== 'all') {
-      filtered = filtered.filter(visit => visit.actionType === selectedActionType);
+      filtered = filtered.filter(visit => visit.action_type === selectedActionType);
     }
 
-    return filtered.sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime());
+    return filtered.sort((a, b) => new Date(b.visit_date).getTime() - new Date(a.visit_date).getTime());
   };
 
   const exportToCSV = () => {
@@ -128,15 +129,15 @@ const ExportReport: React.FC<ExportReportProps> = ({ visits, companies, customer
     ];
 
     const csvData = filteredVisits.map(visit => [
-      new Date(visit.visitDate).toLocaleDateString(),
-      getCompanyName(visit.companyId),
-      getCompanyType(visit.companyId),
-      getCustomerName(visit.customerId),
-      visit.actionType,
+      new Date(visit.visit_date).toLocaleDateString(),
+      getCompanyName(visit.company_id),
+      getCompanyType(visit.company_id),
+      getCustomerName(visit.customer_id),
+      visit.action_type,
       visit.status,
       visit.notes || '',
-      visit.nextFollowUp ? new Date(visit.nextFollowUp).toLocaleDateString() : '',
-      new Date(visit.createdAt).toLocaleDateString()
+      visit.next_follow_up ? new Date(visit.next_follow_up).toLocaleDateString() : '',
+      new Date(visit.created_at).toLocaleDateString()
     ]);
 
     const csvContent = [headers, ...csvData]
@@ -163,7 +164,7 @@ const ExportReport: React.FC<ExportReportProps> = ({ visits, companies, customer
   };
 
   const companyTypes = [...new Set(companies.map(company => company.type))];
-  const actionTypes = [...new Set(visits.map(visit => visit.actionType))];
+  const actionTypes = [...new Set(visits.map(visit => visit.action_type))];
   const filteredVisits = getFilteredVisits();
 
   return (
@@ -294,13 +295,13 @@ const ExportReport: React.FC<ExportReportProps> = ({ visits, companies, customer
                 <div key={visit.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium">{getCompanyName(visit.companyId)}</span>
+                      <span className="font-medium">{getCompanyName(visit.company_id)}</span>
                       <Badge variant="outline" className="text-xs">
-                        {getCompanyType(visit.companyId)}
+                        {getCompanyType(visit.company_id)}
                       </Badge>
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      {getCustomerName(visit.customerId)} • {visit.actionType} • {new Date(visit.visitDate).toLocaleDateString()}
+                      {getCustomerName(visit.customer_id)} • {visit.action_type} • {new Date(visit.visit_date).toLocaleDateString()}
                     </div>
                   </div>
                   <Badge variant={visit.status === 'completed' ? 'default' : visit.status === 'pending' ? 'secondary' : 'destructive'}>

@@ -8,8 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Users, Plus, Edit, Trash2, Building2, Mail, Phone } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { useCustomers } from '@/hooks/useCustomers';
+import { useCompanies } from '@/hooks/useCompanies';
 
-const CustomerManagement = ({ customers, setCustomers, companies }) => {
+const CustomerManagement = () => {
+  const { customers, addCustomer, updateCustomer, deleteCustomer } = useCustomers();
+  const { companies } = useCompanies();
   const [isAddingCustomer, setIsAddingCustomer] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [formData, setFormData] = useState({
@@ -17,13 +21,13 @@ const CustomerManagement = ({ customers, setCustomers, companies }) => {
     email: '',
     phone: '',
     position: '',
-    companyId: ''
+    company_id: ''
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.name || !formData.email || !formData.companyId) {
+    if (!formData.name || !formData.email || !formData.company_id) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -32,35 +36,37 @@ const CustomerManagement = ({ customers, setCustomers, companies }) => {
       return;
     }
 
-    const newCustomer = {
-      id: editingCustomer ? editingCustomer.id : Date.now().toString(),
-      name: formData.name,
-      email: formData.email,
-      phone: formData.phone,
-      position: formData.position,
-      companyId: formData.companyId,
-      createdAt: editingCustomer ? editingCustomer.createdAt : new Date().toISOString()
-    };
+    try {
+      const customerData = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        position: formData.position,
+        company_id: formData.company_id
+      };
 
-    if (editingCustomer) {
-      setCustomers(customers.map(cust => cust.id === editingCustomer.id ? newCustomer : cust));
-      toast({
-        title: "Success",
-        description: "Customer updated successfully",
-      });
-    } else {
-      setCustomers([...customers, newCustomer]);
-      toast({
-        title: "Success",
-        description: "Customer added successfully",
-      });
+      if (editingCustomer) {
+        await updateCustomer(editingCustomer.id, customerData);
+        toast({
+          title: "Success",
+          description: "Customer updated successfully",
+        });
+      } else {
+        await addCustomer(customerData);
+        toast({
+          title: "Success",
+          description: "Customer added successfully",
+        });
+      }
+
+      resetForm();
+    } catch (error) {
+      // Error handling is done in the hook
     }
-
-    resetForm();
   };
 
   const resetForm = () => {
-    setFormData({ name: '', email: '', phone: '', position: '', companyId: '' });
+    setFormData({ name: '', email: '', phone: '', position: '', company_id: '' });
     setIsAddingCustomer(false);
     setEditingCustomer(null);
   };
@@ -71,18 +77,22 @@ const CustomerManagement = ({ customers, setCustomers, companies }) => {
       email: customer.email,
       phone: customer.phone,
       position: customer.position,
-      companyId: customer.companyId
+      company_id: customer.company_id
     });
     setEditingCustomer(customer);
     setIsAddingCustomer(true);
   };
 
-  const handleDelete = (customerId) => {
-    setCustomers(customers.filter(cust => cust.id !== customerId));
-    toast({
-      title: "Success",
-      description: "Customer deleted successfully",
-    });
+  const handleDelete = async (customerId) => {
+    try {
+      await deleteCustomer(customerId);
+      toast({
+        title: "Success",
+        description: "Customer deleted successfully",
+      });
+    } catch (error) {
+      // Error handling is done in the hook
+    }
   };
 
   const getCompanyName = (companyId) => {
@@ -172,7 +182,7 @@ const CustomerManagement = ({ customers, setCustomers, companies }) => {
 
                 <div className="space-y-2 md:col-span-2">
                   <Label htmlFor="company">Company *</Label>
-                  <Select value={formData.companyId} onValueChange={(value) => setFormData(prev => ({ ...prev, companyId: value }))}>
+                  <Select value={formData.company_id} onValueChange={(value) => setFormData(prev => ({ ...prev, company_id: value }))}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select company" />
                     </SelectTrigger>
@@ -207,9 +217,9 @@ const CustomerManagement = ({ customers, setCustomers, companies }) => {
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3 flex-1">
                   <div className="flex-shrink-0">
-                    {getCompanyLogo(customer.companyId) ? (
+                    {getCompanyLogo(customer.company_id) ? (
                       <img 
-                        src={getCompanyLogo(customer.companyId)} 
+                        src={getCompanyLogo(customer.company_id)} 
                         alt="Company logo" 
                         className="w-10 h-10 object-cover rounded-lg border"
                       />
@@ -225,7 +235,7 @@ const CustomerManagement = ({ customers, setCustomers, companies }) => {
                       <p className="text-sm text-gray-600 truncate">{customer.position}</p>
                     )}
                     <Badge variant="outline" className="text-xs mt-1">
-                      {getCompanyName(customer.companyId)}
+                      {getCompanyName(customer.company_id)}
                     </Badge>
                   </div>
                 </div>
@@ -261,7 +271,7 @@ const CustomerManagement = ({ customers, setCustomers, companies }) => {
               </div>
               
               <p className="text-xs text-gray-500 mt-3">
-                Added on {new Date(customer.createdAt).toLocaleDateString()}
+                Added on {new Date(customer.created_at).toLocaleDateString()}
               </p>
             </CardContent>
           </Card>

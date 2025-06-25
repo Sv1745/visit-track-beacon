@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,13 +12,15 @@ import CompanyManagement from '@/components/CompanyManagement';
 import CustomerManagement from '@/components/CustomerManagement';
 import VisitTracker from '@/components/VisitTracker';
 import ExportReport from '@/components/ExportReport';
-import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { useCompanies } from '@/hooks/useCompanies';
+import { useCustomers } from '@/hooks/useCustomers';
+import { useVisits } from '@/hooks/useVisits';
 import { toast } from '@/hooks/use-toast';
 
 const Index = () => {
-  const [companies, setCompanies] = useLocalStorage('companies', []);
-  const [customers, setCustomers] = useLocalStorage('customers', []);
-  const [visits, setVisits] = useLocalStorage('visits', []);
+  const { companies } = useCompanies();
+  const { customers } = useCustomers();
+  const { visits } = useVisits();
   const [activeTab, setActiveTab] = useState('dashboard');
 
   // Dashboard statistics
@@ -25,8 +28,8 @@ const Index = () => {
   const totalCustomers = customers.length;
   const totalVisits = visits.length;
   const pendingFollowUps = visits.filter(visit => {
-    if (!visit.nextFollowUp) return false;
-    const followUpDate = new Date(visit.nextFollowUp);
+    if (!visit.next_follow_up) return false;
+    const followUpDate = new Date(visit.next_follow_up);
     const today = new Date();
     const diffTime = followUpDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -46,11 +49,11 @@ const Index = () => {
 
   // Visit action type distribution
   const actionTypeData = visits.reduce((acc, visit) => {
-    const existing = acc.find(item => item.action === visit.actionType);
+    const existing = acc.find(item => item.action === visit.action_type);
     if (existing) {
       existing.count++;
     } else {
-      acc.push({ action: visit.actionType, count: 1 });
+      acc.push({ action: visit.action_type, count: 1 });
     }
     return acc;
   }, []);
@@ -224,24 +227,15 @@ const Index = () => {
           </TabsContent>
 
           <TabsContent value="companies">
-            <CompanyManagement companies={companies} setCompanies={setCompanies} />
+            <CompanyManagement />
           </TabsContent>
 
           <TabsContent value="customers">
-            <CustomerManagement 
-              customers={customers} 
-              setCustomers={setCustomers} 
-              companies={companies} 
-            />
+            <CustomerManagement />
           </TabsContent>
 
           <TabsContent value="visits">
-            <VisitTracker 
-              visits={visits} 
-              setVisits={setVisits} 
-              companies={companies} 
-              customers={customers} 
-            />
+            <VisitTracker />
           </TabsContent>
 
           <TabsContent value="reports">

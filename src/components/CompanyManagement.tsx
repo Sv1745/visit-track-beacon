@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Building2, Plus, Edit, Trash2, Upload } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { useCompanies } from '@/hooks/useCompanies';
 
 const COMPANY_TYPES = [
   'Pharma Manufacturing',
@@ -21,7 +22,8 @@ const COMPANY_TYPES = [
   'Agriculture'
 ];
 
-const CompanyManagement = ({ companies, setCompanies }) => {
+const CompanyManagement = () => {
+  const { companies, addCompany, updateCompany, deleteCompany } = useCompanies();
   const [isAddingCompany, setIsAddingCompany] = useState(false);
   const [editingCompany, setEditingCompany] = useState(null);
   const [formData, setFormData] = useState({
@@ -31,7 +33,7 @@ const CompanyManagement = ({ companies, setCompanies }) => {
     logoPreview: null
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!formData.name || !formData.type) {
@@ -43,29 +45,31 @@ const CompanyManagement = ({ companies, setCompanies }) => {
       return;
     }
 
-    const newCompany = {
-      id: editingCompany ? editingCompany.id : Date.now().toString(),
-      name: formData.name,
-      type: formData.type,
-      logo: formData.logoPreview,
-      createdAt: editingCompany ? editingCompany.createdAt : new Date().toISOString()
-    };
+    try {
+      const companyData = {
+        name: formData.name,
+        type: formData.type,
+        logo: formData.logoPreview
+      };
 
-    if (editingCompany) {
-      setCompanies(companies.map(comp => comp.id === editingCompany.id ? newCompany : comp));
-      toast({
-        title: "Success",
-        description: "Company updated successfully",
-      });
-    } else {
-      setCompanies([...companies, newCompany]);
-      toast({
-        title: "Success",
-        description: "Company added successfully",
-      });
+      if (editingCompany) {
+        await updateCompany(editingCompany.id, companyData);
+        toast({
+          title: "Success",
+          description: "Company updated successfully",
+        });
+      } else {
+        await addCompany(companyData);
+        toast({
+          title: "Success",
+          description: "Company added successfully",
+        });
+      }
+
+      resetForm();
+    } catch (error) {
+      // Error handling is done in the hook
     }
-
-    resetForm();
   };
 
   const resetForm = () => {
@@ -85,12 +89,16 @@ const CompanyManagement = ({ companies, setCompanies }) => {
     setIsAddingCompany(true);
   };
 
-  const handleDelete = (companyId) => {
-    setCompanies(companies.filter(comp => comp.id !== companyId));
-    toast({
-      title: "Success",
-      description: "Company deleted successfully",
-    });
+  const handleDelete = async (companyId) => {
+    try {
+      await deleteCompany(companyId);
+      toast({
+        title: "Success",
+        description: "Company deleted successfully",
+      });
+    } catch (error) {
+      // Error handling is done in the hook
+    }
   };
 
   const handleLogoUpload = (e) => {
@@ -239,7 +247,7 @@ const CompanyManagement = ({ companies, setCompanies }) => {
                 </div>
               </div>
               <p className="text-sm text-gray-500">
-                Added on {new Date(company.createdAt).toLocaleDateString()}
+                Added on {new Date(company.created_at).toLocaleDateString()}
               </p>
             </CardContent>
           </Card>

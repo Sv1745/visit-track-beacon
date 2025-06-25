@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,43 +11,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Calendar, Plus, Edit, Trash2, Users, Building2, Clock, Filter, Table as TableIcon, Grid } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-
-interface Company {
-  id: string;
-  name: string;
-  type: string;
-  logo?: string;
-  createdAt: string;
-}
-
-interface Customer {
-  id: string;
-  name: string;
-  companyId: string;
-  position?: string;
-  email?: string;
-  phone?: string;
-  createdAt: string;
-}
-
-interface Visit {
-  id: string;
-  companyId: string;
-  customerId: string;
-  actionType: string;
-  visitDate: string;
-  notes?: string;
-  nextFollowUp?: string;
-  status: string;
-  createdAt: string;
-}
-
-interface VisitTrackerProps {
-  visits: Visit[];
-  setVisits: (visits: Visit[]) => void;
-  companies: Company[];
-  customers: Customer[];
-}
+import { useVisits } from '@/hooks/useVisits';
+import { useCompanies } from '@/hooks/useCompanies';
+import { useCustomers } from '@/hooks/useCustomers';
 
 const ACTION_TYPES = [
   'Call',
@@ -59,31 +26,34 @@ const ACTION_TYPES = [
   'Contract Discussion'
 ];
 
-const VisitTracker: React.FC<VisitTrackerProps> = ({ visits, setVisits, companies, customers }) => {
+const VisitTracker = () => {
+  const { visits, addVisit, updateVisit, deleteVisit } = useVisits();
+  const { companies } = useCompanies();
+  const { customers } = useCustomers();
   const [isAddingVisit, setIsAddingVisit] = useState(false);
-  const [editingVisit, setEditingVisit] = useState<Visit | null>(null);
+  const [editingVisit, setEditingVisit] = useState(null);
   const [selectedCompany, setSelectedCompany] = useState('');
   const [viewMode, setViewMode] = useState('cards');
   const [filters, setFilters] = useState({
-    companyId: 'all',
-    customerId: 'all',
-    actionType: 'all',
+    company_id: 'all',
+    customer_id: 'all',
+    action_type: 'all',
     status: 'all'
   });
   const [formData, setFormData] = useState({
-    companyId: '',
-    customerId: '',
-    actionType: '',
-    visitDate: '',
+    company_id: '',
+    customer_id: '',
+    action_type: '',
+    visit_date: '',
     notes: '',
-    nextFollowUp: '',
+    next_follow_up: '',
     status: 'completed'
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!formData.companyId || !formData.customerId || !formData.actionType || !formData.visitDate) {
+    if (!formData.company_id || !formData.customer_id || !formData.action_type || !formData.visit_date) {
       toast({
         title: "Error",
         description: "Please fill in all required fields",
@@ -92,43 +62,45 @@ const VisitTracker: React.FC<VisitTrackerProps> = ({ visits, setVisits, companie
       return;
     }
 
-    const newVisit: Visit = {
-      id: editingVisit ? editingVisit.id : Date.now().toString(),
-      companyId: formData.companyId,
-      customerId: formData.customerId,
-      actionType: formData.actionType,
-      visitDate: formData.visitDate,
-      notes: formData.notes,
-      nextFollowUp: formData.nextFollowUp,
-      status: formData.status,
-      createdAt: editingVisit ? editingVisit.createdAt : new Date().toISOString()
-    };
+    try {
+      const visitData = {
+        company_id: formData.company_id,
+        customer_id: formData.customer_id,
+        action_type: formData.action_type,
+        visit_date: formData.visit_date,
+        notes: formData.notes,
+        next_follow_up: formData.next_follow_up || null,
+        status: formData.status
+      };
 
-    if (editingVisit) {
-      setVisits(visits.map(visit => visit.id === editingVisit.id ? newVisit : visit));
-      toast({
-        title: "Success",
-        description: "Visit updated successfully",
-      });
-    } else {
-      setVisits([...visits, newVisit]);
-      toast({
-        title: "Success",
-        description: "Visit recorded successfully",
-      });
+      if (editingVisit) {
+        await updateVisit(editingVisit.id, visitData);
+        toast({
+          title: "Success",
+          description: "Visit updated successfully",
+        });
+      } else {
+        await addVisit(visitData);
+        toast({
+          title: "Success",
+          description: "Visit recorded successfully",
+        });
+      }
+
+      resetForm();
+    } catch (error) {
+      // Error handling is done in the hook
     }
-
-    resetForm();
   };
 
   const resetForm = () => {
     setFormData({
-      companyId: '',
-      customerId: '',
-      actionType: '',
-      visitDate: '',
+      company_id: '',
+      customer_id: '',
+      action_type: '',
+      visit_date: '',
       notes: '',
-      nextFollowUp: '',
+      next_follow_up: '',
       status: 'completed'
     });
     setSelectedCompany('');
@@ -136,72 +108,76 @@ const VisitTracker: React.FC<VisitTrackerProps> = ({ visits, setVisits, companie
     setEditingVisit(null);
   };
 
-  const handleEdit = (visit: Visit) => {
+  const handleEdit = (visit) => {
     setFormData({
-      companyId: visit.companyId,
-      customerId: visit.customerId,
-      actionType: visit.actionType,
-      visitDate: visit.visitDate,
+      company_id: visit.company_id,
+      customer_id: visit.customer_id,
+      action_type: visit.action_type,
+      visit_date: visit.visit_date,
       notes: visit.notes || '',
-      nextFollowUp: visit.nextFollowUp || '',
+      next_follow_up: visit.next_follow_up || '',
       status: visit.status
     });
-    setSelectedCompany(visit.companyId);
+    setSelectedCompany(visit.company_id);
     setEditingVisit(visit);
     setIsAddingVisit(true);
   };
 
-  const handleDelete = (visitId: string) => {
-    setVisits(visits.filter(visit => visit.id !== visitId));
-    toast({
-      title: "Success",
-      description: "Visit deleted successfully",
-    });
+  const handleDelete = async (visitId) => {
+    try {
+      await deleteVisit(visitId);
+      toast({
+        title: "Success",
+        description: "Visit deleted successfully",
+      });
+    } catch (error) {
+      // Error handling is done in the hook
+    }
   };
 
-  const getCompanyName = (companyId: string) => {
+  const getCompanyName = (companyId) => {
     const company = companies.find(comp => comp.id === companyId);
     return company ? company.name : 'Unknown Company';
   };
 
-  const getCustomerName = (customerId: string) => {
+  const getCustomerName = (customerId) => {
     const customer = customers.find(cust => cust.id === customerId);
     return customer ? customer.name : 'Unknown Customer';
   };
 
-  const getCompanyLogo = (companyId: string) => {
+  const getCompanyLogo = (companyId) => {
     const company = companies.find(comp => comp.id === companyId);
     return company ? company.logo : null;
   };
 
   const getFilteredCustomers = () => {
-    if (!selectedCompany && !formData.companyId) return [];
-    const companyId = selectedCompany || formData.companyId;
-    return customers.filter(customer => customer.companyId === companyId);
+    if (!selectedCompany && !formData.company_id) return [];
+    const companyId = selectedCompany || formData.company_id;
+    return customers.filter(customer => customer.company_id === companyId);
   };
 
-  const handleCompanyChange = (companyId: string) => {
-    setFormData(prev => ({ ...prev, companyId, customerId: '' }));
+  const handleCompanyChange = (companyId) => {
+    setFormData(prev => ({ ...prev, company_id: companyId, customer_id: '' }));
     setSelectedCompany(companyId);
   };
 
   const getFilteredVisits = () => {
     let filtered = [...visits];
 
-    if (filters.companyId !== 'all') {
-      filtered = filtered.filter(visit => visit.companyId === filters.companyId);
+    if (filters.company_id !== 'all') {
+      filtered = filtered.filter(visit => visit.company_id === filters.company_id);
     }
-    if (filters.customerId !== 'all') {
-      filtered = filtered.filter(visit => visit.customerId === filters.customerId);
+    if (filters.customer_id !== 'all') {
+      filtered = filtered.filter(visit => visit.customer_id === filters.customer_id);
     }
-    if (filters.actionType !== 'all') {
-      filtered = filtered.filter(visit => visit.actionType === filters.actionType);
+    if (filters.action_type !== 'all') {
+      filtered = filtered.filter(visit => visit.action_type === filters.action_type);
     }
     if (filters.status !== 'all') {
       filtered = filtered.filter(visit => visit.status === filters.status);
     }
 
-    return filtered.sort((a, b) => new Date(b.visitDate).getTime() - new Date(a.visitDate).getTime());
+    return filtered.sort((a, b) => new Date(b.visit_date).getTime() - new Date(a.visit_date).getTime());
   };
 
   const sortedVisits = getFilteredVisits();
@@ -241,7 +217,7 @@ const VisitTracker: React.FC<VisitTrackerProps> = ({ visits, setVisits, companie
         <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="space-y-2">
             <Label>Company</Label>
-            <Select value={filters.companyId} onValueChange={(value) => setFilters(prev => ({ ...prev, companyId: value }))}>
+            <Select value={filters.company_id} onValueChange={(value) => setFilters(prev => ({ ...prev, company_id: value }))}>
               <SelectTrigger>
                 <SelectValue placeholder="All companies" />
               </SelectTrigger>
@@ -256,7 +232,7 @@ const VisitTracker: React.FC<VisitTrackerProps> = ({ visits, setVisits, companie
 
           <div className="space-y-2">
             <Label>Customer</Label>
-            <Select value={filters.customerId} onValueChange={(value) => setFilters(prev => ({ ...prev, customerId: value }))}>
+            <Select value={filters.customer_id} onValueChange={(value) => setFilters(prev => ({ ...prev, customer_id: value }))}>
               <SelectTrigger>
                 <SelectValue placeholder="All customers" />
               </SelectTrigger>
@@ -271,7 +247,7 @@ const VisitTracker: React.FC<VisitTrackerProps> = ({ visits, setVisits, companie
 
           <div className="space-y-2">
             <Label>Action Type</Label>
-            <Select value={filters.actionType} onValueChange={(value) => setFilters(prev => ({ ...prev, actionType: value }))}>
+            <Select value={filters.action_type} onValueChange={(value) => setFilters(prev => ({ ...prev, action_type: value }))}>
               <SelectTrigger>
                 <SelectValue placeholder="All actions" />
               </SelectTrigger>
@@ -323,7 +299,7 @@ const VisitTracker: React.FC<VisitTrackerProps> = ({ visits, setVisits, companie
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="company">Company *</Label>
-                  <Select value={formData.companyId} onValueChange={handleCompanyChange}>
+                  <Select value={formData.company_id} onValueChange={handleCompanyChange}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select company" />
                     </SelectTrigger>
@@ -340,9 +316,9 @@ const VisitTracker: React.FC<VisitTrackerProps> = ({ visits, setVisits, companie
                 <div className="space-y-2">
                   <Label htmlFor="customer">Customer *</Label>
                   <Select 
-                    value={formData.customerId} 
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, customerId: value }))}
-                    disabled={!formData.companyId}
+                    value={formData.customer_id} 
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, customer_id: value }))}
+                    disabled={!formData.company_id}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select customer" />
@@ -359,7 +335,7 @@ const VisitTracker: React.FC<VisitTrackerProps> = ({ visits, setVisits, companie
 
                 <div className="space-y-2">
                   <Label htmlFor="actionType">Action Type *</Label>
-                  <Select value={formData.actionType} onValueChange={(value) => setFormData(prev => ({ ...prev, actionType: value }))}>
+                  <Select value={formData.action_type} onValueChange={(value) => setFormData(prev => ({ ...prev, action_type: value }))}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select action type" />
                     </SelectTrigger>
@@ -376,8 +352,8 @@ const VisitTracker: React.FC<VisitTrackerProps> = ({ visits, setVisits, companie
                   <Input
                     id="visitDate"
                     type="date"
-                    value={formData.visitDate}
-                    onChange={(e) => setFormData(prev => ({ ...prev, visitDate: e.target.value }))}
+                    value={formData.visit_date}
+                    onChange={(e) => setFormData(prev => ({ ...prev, visit_date: e.target.value }))}
                     required
                   />
                 </div>
@@ -387,8 +363,8 @@ const VisitTracker: React.FC<VisitTrackerProps> = ({ visits, setVisits, companie
                   <Input
                     id="nextFollowUp"
                     type="date"
-                    value={formData.nextFollowUp}
-                    onChange={(e) => setFormData(prev => ({ ...prev, nextFollowUp: e.target.value }))}
+                    value={formData.next_follow_up}
+                    onChange={(e) => setFormData(prev => ({ ...prev, next_follow_up: e.target.value }))}
                   />
                 </div>
 
@@ -452,9 +428,9 @@ const VisitTracker: React.FC<VisitTrackerProps> = ({ visits, setVisits, companie
                   <TableRow key={visit.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {getCompanyLogo(visit.companyId) ? (
+                        {getCompanyLogo(visit.company_id) ? (
                           <img 
-                            src={getCompanyLogo(visit.companyId)} 
+                            src={getCompanyLogo(visit.company_id)} 
                             alt="Company logo" 
                             className="w-6 h-6 object-cover rounded border"
                           />
@@ -463,24 +439,24 @@ const VisitTracker: React.FC<VisitTrackerProps> = ({ visits, setVisits, companie
                             <Building2 className="w-3 h-3 text-purple-600" />
                           </div>
                         )}
-                        <span className="font-medium">{getCompanyName(visit.companyId)}</span>
+                        <span className="font-medium">{getCompanyName(visit.company_id)}</span>
                       </div>
                     </TableCell>
-                    <TableCell>{getCustomerName(visit.customerId)}</TableCell>
+                    <TableCell>{getCustomerName(visit.customer_id)}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">{visit.actionType}</Badge>
+                      <Badge variant="outline">{visit.action_type}</Badge>
                     </TableCell>
-                    <TableCell>{new Date(visit.visitDate).toLocaleDateString()}</TableCell>
+                    <TableCell>{new Date(visit.visit_date).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <Badge variant={visit.status === 'completed' ? 'default' : visit.status === 'pending' ? 'secondary' : 'destructive'}>
                         {visit.status}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {visit.nextFollowUp ? (
+                      {visit.next_follow_up ? (
                         <div className="flex items-center gap-1 text-sm">
                           <Clock className="w-3 h-3" />
-                          {new Date(visit.nextFollowUp).toLocaleDateString()}
+                          {new Date(visit.next_follow_up).toLocaleDateString()}
                         </div>
                       ) : (
                         <span className="text-muted-foreground text-sm">-</span>
@@ -528,9 +504,9 @@ const VisitTracker: React.FC<VisitTrackerProps> = ({ visits, setVisits, companie
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    {getCompanyLogo(visit.companyId) ? (
+                    {getCompanyLogo(visit.company_id) ? (
                       <img 
-                        src={getCompanyLogo(visit.companyId)} 
+                        src={getCompanyLogo(visit.company_id)} 
                         alt="Company logo" 
                         className="w-10 h-10 object-cover rounded-lg border"
                       />
@@ -541,16 +517,16 @@ const VisitTracker: React.FC<VisitTrackerProps> = ({ visits, setVisits, companie
                     )}
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-sm truncate">
-                        {visit.actionType}
+                        {visit.action_type}
                       </h3>
                       <div className="text-xs text-muted-foreground space-y-1">
                         <div className="flex items-center gap-1">
                           <Building2 className="w-3 h-3" />
-                          <span className="truncate">{getCompanyName(visit.companyId)}</span>
+                          <span className="truncate">{getCompanyName(visit.company_id)}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <Users className="w-3 h-3" />
-                          <span className="truncate">{getCustomerName(visit.customerId)}</span>
+                          <span className="truncate">{getCustomerName(visit.customer_id)}</span>
                         </div>
                       </div>
                     </div>
@@ -581,14 +557,14 @@ const VisitTracker: React.FC<VisitTrackerProps> = ({ visits, setVisits, companie
                       {visit.status}
                     </Badge>
                     <span className="text-xs text-muted-foreground">
-                      {new Date(visit.visitDate).toLocaleDateString()}
+                      {new Date(visit.visit_date).toLocaleDateString()}
                     </span>
                   </div>
                   
-                  {visit.nextFollowUp && (
+                  {visit.next_follow_up && (
                     <div className="flex items-center gap-1 text-xs text-muted-foreground">
                       <Clock className="w-3 h-3" />
-                      <span>Follow-up: {new Date(visit.nextFollowUp).toLocaleDateString()}</span>
+                      <span>Follow-up: {new Date(visit.next_follow_up).toLocaleDateString()}</span>
                     </div>
                   )}
 
