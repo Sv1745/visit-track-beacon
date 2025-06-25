@@ -40,7 +40,7 @@ const VisitDetailsModal = ({
     return { status: 'scheduled', days: diffDays };
   };
 
-  const followUpStatus = getFollowUpStatus(visit.next_follow_up, visit.status);
+  const followUpStatus = getFollowUpStatus(visit.next_follow_up || '', visit.status);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,7 +32,7 @@ const VisitTracker = () => {
   const { companies } = useCompanies();
   const { customers } = useCustomers();
   const [isAddingVisit, setIsAddingVisit] = useState(false);
-  const [editingVisit, setEditingVisit] = useState(null);
+  const [editingVisit, setEditingVisit] = useState<Visit | null>(null);
   const [selectedCompany, setSelectedCompany] = useState('');
   const [viewMode, setViewMode] = useState('cards');
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
@@ -56,7 +55,7 @@ const VisitTracker = () => {
     status: 'completed'
   });
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.company_id || !formData.customer_id || !formData.action_type || !formData.visit_date) {
@@ -96,19 +95,38 @@ const VisitTracker = () => {
 
       resetForm();
     } catch (error) {
-      // Error handling is done in the hook
+      console.error('Error saving visit:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save visit. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
   const handleMarkComplete = async (visitId: string) => {
+    const visit = visits.find(v => v.id === visitId);
+    if (!visit) return;
+
+    // Prompt for completion notes
+    const completionNotes = prompt('Please enter completion notes for this follow-up:');
+    if (completionNotes === null) return; // User cancelled
+
     try {
-      await updateVisit(visitId, { status: 'completed' });
+      const updatedNotes = visit.notes ? 
+        `${visit.notes}\n\n--- Completion Notes ---\n${completionNotes}` : 
+        `--- Completion Notes ---\n${completionNotes}`;
+
+      await updateVisit(visitId, { 
+        status: 'completed',
+        notes: updatedNotes
+      });
       toast({
         title: "Success",
         description: "Visit marked as completed",
       });
     } catch (error) {
-      // Error handling is done in the hook
+      console.error('Error marking visit as complete:', error);
     }
   };
 
@@ -128,7 +146,7 @@ const VisitTracker = () => {
     setEditingVisit(null);
   };
 
-  const handleEdit = (visit) => {
+  const handleEdit = (visit: Visit) => {
     setFormData({
       company_id: visit.company_id,
       customer_id: visit.customer_id,  
@@ -144,7 +162,9 @@ const VisitTracker = () => {
     setIsAddingVisit(true);
   };
 
-  const handleDelete = async (visitId) => {
+  const handleDelete = async (visitId: string) => {
+    if (!confirm('Are you sure you want to delete this visit?')) return;
+    
     try {
       await deleteVisit(visitId);
       toast({
@@ -152,7 +172,7 @@ const VisitTracker = () => {
         description: "Visit deleted successfully",
       });
     } catch (error) {
-      // Error handling is done in the hook
+      console.error('Error deleting visit:', error);
     }
   };
 
@@ -161,17 +181,17 @@ const VisitTracker = () => {
     setIsModalOpen(true);
   };
 
-  const getCompanyName = (companyId) => {
+  const getCompanyName = (companyId: string) => {
     const company = companies.find(comp => comp.id === companyId);
     return company ? company.name : 'Unknown Company';
   };
 
-  const getCustomerName = (customerId) => {
+  const getCustomerName = (customerId: string) => {
     const customer = customers.find(cust => cust.id === customerId);
     return customer ? customer.name : 'Unknown Customer';
   };
 
-  const getCompanyLogo = (companyId) => {
+  const getCompanyLogo = (companyId: string) => {
     const company = companies.find(comp => comp.id === companyId);
     return company ? company.logo : null;
   };
@@ -182,7 +202,7 @@ const VisitTracker = () => {
     return customers.filter(customer => customer.company_id === companyId);
   };
 
-  const handleCompanyChange = (companyId) => {
+  const handleCompanyChange = (companyId: string) => {
     setFormData(prev => ({ ...prev, company_id: companyId, customer_id: '' }));
     setSelectedCompany(companyId);
   };
