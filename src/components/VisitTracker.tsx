@@ -358,7 +358,7 @@ const VisitTracker = () => {
                       <SelectValue placeholder="Select next action" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {ACTION_TYPES.map(action => (
                         <SelectItem key={action} value={action}>{action}</SelectItem>
                       ))}
