@@ -71,6 +71,78 @@ export type Database = {
           },
         ]
       }
+      equipment_types: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      requirements: {
+        Row: {
+          company_id: string
+          created_at: string
+          customer_id: string
+          equipment_name: string
+          id: string
+          notes: string | null
+          recorded_date: string
+          required_period: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          customer_id: string
+          equipment_name: string
+          id?: string
+          notes?: string | null
+          recorded_date?: string
+          required_period: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          customer_id?: string
+          equipment_name?: string
+          id?: string
+          notes?: string | null
+          recorded_date?: string
+          required_period?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "requirements_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "requirements_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       visits: {
         Row: {
           action_type: string

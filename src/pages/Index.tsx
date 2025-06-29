@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -6,27 +5,42 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { Calendar, Users, Building2, TrendingUp, Bell, Plus, Download, Phone, Clock, AlertCircle } from 'lucide-react';
+import { Calendar, Users, Building2, TrendingUp, Bell, Plus, Download, Phone, Clock, AlertCircle, Package, Settings } from 'lucide-react';
 import { AuthHeader } from '@/components/auth/AuthHeader';
 import CompanyManagement from '@/components/CompanyManagement';
 import CustomerManagement from '@/components/CustomerManagement';
 import VisitTracker from '@/components/VisitTracker';
 import ExportReport from '@/components/ExportReport';
+import RequirementManagement from '@/components/RequirementManagement';
 import { useCompanies } from '@/hooks/useCompanies';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useVisits } from '@/hooks/useVisits';
+import { useRequirements } from '@/hooks/useRequirements';
 import { toast } from '@/hooks/use-toast';
 
 const Index = () => {
   const { companies } = useCompanies();
   const { customers } = useCustomers();
   const { visits } = useVisits();
+  const { requirements } = useRequirements();
   const [activeTab, setActiveTab] = useState('dashboard');
 
   // Dashboard statistics
   const totalCompanies = companies.length;
   const totalCustomers = customers.length;
   const totalVisits = visits.length;
+  const totalRequirements = requirements.length;
+  
+  // Requirements analysis
+  const pendingRequirements = requirements.filter(req => req.status === 'pending').length;
+  const processingRequirements = requirements.filter(req => req.status === 'processing').length;
+  const upcomingRequirements = requirements.filter(req => {
+    const reqDate = new Date(req.required_period);
+    const today = new Date();
+    const diffTime = reqDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays <= 30 && diffDays > 0;
+  }).length;
   
   // Follow-up analysis - only count non-completed visits as overdue
   const today = new Date();
@@ -129,7 +143,7 @@ const Index = () => {
         <AuthHeader />
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-6 lg:w-fit lg:grid-cols-6">
+          <TabsList className="grid w-full grid-cols-7 lg:w-fit lg:grid-cols-7">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4" />
               Dashboard
@@ -145,6 +159,10 @@ const Index = () => {
             <TabsTrigger value="visits" className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
               Visits
+            </TabsTrigger>
+            <TabsTrigger value="requirements" className="flex items-center gap-2">
+              <Package className="w-4 h-4" />
+              Requirements
             </TabsTrigger>
             <TabsTrigger value="calendar" className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
@@ -166,7 +184,7 @@ const Index = () => {
               </Alert>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
               <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Total Companies</CardTitle>
@@ -197,6 +215,16 @@ const Index = () => {
                 </CardContent>
               </Card>
 
+              <Card className="bg-gradient-to-r from-teal-500 to-teal-600 text-white">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Requirements</CardTitle>
+                  <Package className="h-4 w-4" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{totalRequirements}</div>
+                </CardContent>
+              </Card>
+
               <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Pending Follow-ups</CardTitle>
@@ -207,6 +235,44 @@ const Index = () => {
                 </CardContent>
               </Card>
             </div>
+
+            {/* Requirements Status Cards */}
+            {totalRequirements > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card className="border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-yellow-800 dark:text-yellow-200">Pending Requirements</CardTitle>
+                    <Package className="h-4 w-4 text-yellow-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-yellow-700 dark:text-yellow-300">{pendingRequirements}</div>
+                    <p className="text-xs text-yellow-600 dark:text-yellow-400">Awaiting processing</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-blue-800 dark:text-blue-200">Processing</CardTitle>
+                    <Settings className="h-4 w-4 text-blue-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-blue-700 dark:text-blue-300">{processingRequirements}</div>
+                    <p className="text-xs text-blue-600 dark:text-blue-400">Being processed</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-green-800 dark:text-green-200">Upcoming (30 days)</CardTitle>
+                    <Calendar className="h-4 w-4 text-green-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-green-700 dark:text-green-300">{upcomingRequirements}</div>
+                    <p className="text-xs text-green-600 dark:text-green-400">Due within 30 days</p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
             {/* Next Action Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -359,6 +425,10 @@ const Index = () => {
                   <Plus className="w-4 h-4" />
                   Record Visit
                 </Button>
+                <Button onClick={() => setActiveTab('requirements')} variant="outline" className="flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  Record Requirement
+                </Button>
                 <Button onClick={() => setActiveTab('reports')} variant="outline" className="flex items-center gap-2">
                   <Download className="w-4 h-4" />
                   Export Report
@@ -377,6 +447,10 @@ const Index = () => {
 
           <TabsContent value="visits">
             <VisitTracker />
+          </TabsContent>
+
+          <TabsContent value="requirements">
+            <RequirementManagement />
           </TabsContent>
 
           <TabsContent value="calendar">

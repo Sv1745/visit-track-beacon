@@ -14,6 +14,7 @@ import { toast } from '@/hooks/use-toast';
 import { useVisits, Visit } from '@/hooks/useVisits';
 import { useCompanies } from '@/hooks/useCompanies';
 import { useCustomers } from '@/hooks/useCustomers';
+import { useRequirements, useEquipmentTypes } from '@/hooks/useRequirements';
 import VisitDetailsModal from './VisitDetailsModal';
 
 const ACTION_TYPES = [
@@ -31,6 +32,8 @@ const VisitTracker = () => {
   const { visits, addVisit, updateVisit, deleteVisit } = useVisits();
   const { companies } = useCompanies();
   const { customers } = useCustomers();
+  const { addRequirement } = useRequirements();
+  const { equipmentTypes } = useEquipmentTypes();
   const [isAddingVisit, setIsAddingVisit] = useState(false);
   const [editingVisit, setEditingVisit] = useState<Visit | null>(null);
   const [selectedCompany, setSelectedCompany] = useState('');
@@ -38,6 +41,7 @@ const VisitTracker = () => {
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('active');
+  const [showRequirementForm, setShowRequirementForm] = useState(false);
   const [filters, setFilters] = useState({
     company_id: 'all',
     customer_id: 'all',
@@ -53,6 +57,11 @@ const VisitTracker = () => {
     next_follow_up: '',
     next_action_type: '',
     status: 'completed'
+  });
+  const [requirementData, setRequirementData] = useState({
+    equipment_name: '',
+    required_period: '',
+    notes: ''
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -90,6 +99,25 @@ const VisitTracker = () => {
         toast({
           title: "Success",
           description: "Visit recorded successfully",
+        });
+      }
+
+      // If requirement form is shown and has data, save requirement too
+      if (showRequirementForm && requirementData.equipment_name && requirementData.required_period) {
+        const requirement = {
+          company_id: formData.company_id,
+          customer_id: formData.customer_id,
+          equipment_name: requirementData.equipment_name,
+          required_period: requirementData.required_period,
+          status: 'pending',
+          notes: requirementData.notes,
+          recorded_date: new Date().toISOString().split('T')[0]
+        };
+        
+        await addRequirement(requirement);
+        toast({
+          title: "Success",
+          description: "Requirement also recorded successfully",
         });
       }
 
@@ -141,9 +169,15 @@ const VisitTracker = () => {
       next_action_type: '',
       status: 'completed'
     });
+    setRequirementData({
+      equipment_name: '',
+      required_period: '',
+      notes: ''
+    });
     setSelectedCompany('');
     setIsAddingVisit(false);
     setEditingVisit(null);
+    setShowRequirementForm(false);
   };
 
   const handleEdit = (visit: Visit) => {
@@ -379,6 +413,66 @@ const VisitTracker = () => {
                     </SelectContent>
                   </Select>
                 </div>
+              </div>
+
+              {/* Requirement Section */}
+              <div className="border-t pt-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <input
+                    type="checkbox"
+                    id="hasRequirement"
+                    checked={showRequirementForm}
+                    onChange={(e) => setShowRequirementForm(e.target.checked)}
+                    className="rounded"
+                  />
+                  <Label htmlFor="hasRequirement" className="text-foreground">
+                    Customer mentioned a requirement during this visit
+                  </Label>
+                </div>
+
+                {showRequirementForm && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/20 rounded-lg">
+                    <div className="space-y-2">
+                      <Label htmlFor="equipmentName" className="text-foreground">Equipment Required *</Label>
+                      <Select 
+                        value={requirementData.equipment_name} 
+                        onValueChange={(value) => setRequirementData(prev => ({ ...prev, equipment_name: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select equipment" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {equipmentTypes.map(equipment => (
+                            <SelectItem key={equipment.id} value={equipment.name}>
+                              {equipment.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="requiredPeriod" className="text-foreground">Required Period *</Label>
+                      <Input
+                        id="requiredPeriod"
+                        type="date"
+                        value={requirementData.required_period}
+                        onChange={(e) => setRequirementData(prev => ({ ...prev, required_period: e.target.value }))}
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="requirementNotes" className="text-foreground">Requirement Notes</Label>
+                      <Textarea
+                        id="requirementNotes"
+                        value={requirementData.notes}
+                        onChange={(e) => setRequirementData(prev => ({ ...prev, notes: e.target.value }))}
+                        placeholder="Additional details about the requirement..."
+                        rows={2}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
