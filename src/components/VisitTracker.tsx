@@ -250,12 +250,19 @@ const VisitTracker = () => {
 
   const sortedVisits = activeTab === 'active' ? getActiveVisits() : getCompletedVisits();
 
+  console.log('VisitTracker render - isAddingVisit:', isAddingVisit);
+  console.log('Companies count:', companies.length);
+  console.log('Customers count:', customers.length);
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-foreground">Visit Tracker</h2>
         <Button 
-          onClick={() => setIsAddingVisit(true)} 
+          onClick={() => {
+            console.log('Record Visit button clicked');
+            setIsAddingVisit(true);
+          }} 
           className="flex items-center gap-2"
           disabled={companies.length === 0 || customers.length === 0}
         >
@@ -264,268 +271,547 @@ const VisitTracker = () => {
         </Button>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="active" className="flex items-center gap-2">
-            <Calendar className="w-4 h-4" />
-            Active Visits ({getActiveVisits().length})
-          </TabsTrigger>
-          <TabsTrigger value="history" className="flex items-center gap-2">
-            <History className="w-4 h-4" />
-            History ({getCompletedVisits().length})
-          </TabsTrigger>
-        </TabsList>
+      {/* Add Visit Form - Always show when isAddingVisit is true */}
+      {isAddingVisit && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-foreground">{editingVisit ? 'Edit Visit' : 'Record New Visit'}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="company" className="text-foreground">Company *</Label>
+                  <Select value={formData.company_id} onValueChange={handleCompanyChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select company" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {companies.map(company => (
+                        <SelectItem key={company.id} value={company.id}>
+                          {company.name} ({company.type})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="customer" className="text-foreground">Customer *</Label>
+                  <Select 
+                    value={formData.customer_id} 
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, customer_id: value }))}
+                    disabled={!formData.company_id}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select customer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getFilteredCustomers().map(customer => (
+                        <SelectItem key={customer.id} value={customer.id}>
+                          {customer.name} {customer.position && `(${customer.position})`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-        <TabsContent value="active" className="space-y-6">
-          {/* Filters */}
-          <Card>
-            <CardHeader>
-              <div className="flex justify-between items-center">
-                <CardTitle className="flex items-center gap-2 text-foreground">
-                  <Filter className="w-5 h-5" />
-                  Filters
-                </CardTitle>
-                <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value)}>
-                  <ToggleGroupItem value="cards" aria-label="Card view">
-                    <Grid className="w-4 h-4" />
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="table" aria-label="Table view">
-                    <TableIcon className="w-4 h-4" />
-                  </ToggleGroupItem>
-                </ToggleGroup>
+                <div className="space-y-2">
+                  <Label htmlFor="actionType" className="text-foreground">Action Type *</Label>
+                  <Select value={formData.action_type} onValueChange={(value) => setFormData(prev => ({ ...prev, action_type: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select action type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ACTION_TYPES.map(action => (
+                        <SelectItem key={action} value={action}>{action}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="visitDate" className="text-foreground">Action Date *</Label>
+                  <Input
+                    id="visitDate"
+                    type="date"
+                    value={formData.visit_date}
+                    onChange={(e) => setFormData(prev => ({ ...prev, visit_date: e.target.value }))}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="nextFollowUp" className="text-foreground">Next Action Date</Label>
+                  <Input
+                    id="nextFollowUp"
+                    type="date"
+                    value={formData.next_follow_up}
+                    onChange={(e) => setFormData(prev => ({ ...prev, next_follow_up: e.target.value }))}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="nextActionType" className="text-foreground">Next Action Type</Label>
+                  <Select value={formData.next_action_type} onValueChange={(value) => setFormData(prev => ({ ...prev, next_action_type: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select next action" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem>
+                      {ACTION_TYPES.map(action => (
+                        <SelectItem key={action} value={action}>{action}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="status" className="text-foreground">Status</Label>
+                  <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
+
               <div className="space-y-2">
-                <Label className="text-foreground">Company</Label>
-                <Select value={filters.company_id} onValueChange={(value) => setFilters(prev => ({ ...prev, company_id: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All companies" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All companies</SelectItem>
-                    {companies.map(company => (
-                      <SelectItem key={company.id} value={company.id}>{company.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="notes" className="text-foreground">Notes</Label>
+                <Textarea
+                  id="notes"
+                  value={formData.notes}
+                  onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Add any notes about this visit..."
+                  rows={3}
+                />
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-foreground">Customer</Label>
-                <Select value={filters.customer_id} onValueChange={(value) => setFilters(prev => ({ ...prev, customer_id: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All customers" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All customers</SelectItem>
-                    {customers.map(customer => (
-                      <SelectItem key={customer.id} value={customer.id}>{customer.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="flex gap-2">
+                <Button type="submit">
+                  {editingVisit ? 'Update Visit' : 'Record Visit'}
+                </Button>
+                <Button type="button" variant="outline" onClick={resetForm}>
+                  Cancel
+                </Button>
               </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
-              <div className="space-y-2">
-                <Label className="text-foreground">Action Type</Label>
-                <Select value={filters.action_type} onValueChange={(value) => setFilters(prev => ({ ...prev, action_type: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All actions" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All actions</SelectItem>
-                    {ACTION_TYPES.map(action => (
-                      <SelectItem key={action} value={action}>{action}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+      {/* Setup Required Message */}
+      {(companies.length === 0 || customers.length === 0) && !isAddingVisit && (
+        <Card>
+          <CardContent className="text-center py-8">
+            <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium mb-2 text-foreground">Setup Required</h3>
+            <p className="text-muted-foreground">
+              You need to add companies and customers before recording visits
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
-              <div className="space-y-2">
-                <Label className="text-foreground">Status</Label>
-                <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="All statuses" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All statuses</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
+      {/* Main Content - Only show if not adding visit or if no setup is required */}
+      {!isAddingVisit && companies.length > 0 && customers.length > 0 && (
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="active" className="flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              Active Visits ({getActiveVisits().length})
+            </TabsTrigger>
+            <TabsTrigger value="history" className="flex items-center gap-2">
+              <History className="w-4 h-4" />
+              History ({getCompletedVisits().length})
+            </TabsTrigger>
+          </TabsList>
 
-          {(companies.length === 0 || customers.length === 0) && (
-            <Card>
-              <CardContent className="text-center py-8">
-                <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2 text-foreground">Setup Required</h3>
-                <p className="text-muted-foreground">
-                  You need to add companies and customers before recording visits
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {isAddingVisit && companies.length > 0 && customers.length > 0 && (
+          <TabsContent value="active" className="space-y-6">
+            {/* Filters */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-foreground">{editingVisit ? 'Edit Visit' : 'Record New Visit'}</CardTitle>
+                <div className="flex justify-between items-center">
+                  <CardTitle className="flex items-center gap-2 text-foreground">
+                    <Filter className="w-5 h-5" />
+                    Filters
+                  </CardTitle>
+                  <ToggleGroup type="single" value={viewMode} onValueChange={(value) => value && setViewMode(value)}>
+                    <ToggleGroupItem value="cards" aria-label="Card view">
+                      <Grid className="w-4 h-4" />
+                    </ToggleGroupItem>
+                    <ToggleGroupItem value="table" aria-label="Table view">
+                      <TableIcon className="w-4 h-4" />
+                    </ToggleGroupItem>
+                  </ToggleGroup>
+                </div>
               </CardHeader>
-              <CardContent>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="company" className="text-foreground">Company *</Label>
-                      <Select value={formData.company_id} onValueChange={handleCompanyChange}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select company" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {companies.map(company => (
-                            <SelectItem key={company.id} value={company.id}>
-                              {company.name} ({company.type})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="customer" className="text-foreground">Customer *</Label>
-                      <Select 
-                        value={formData.customer_id} 
-                        onValueChange={(value) => setFormData(prev => ({ ...prev, customer_id: value }))}
-                        disabled={!formData.company_id}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select customer" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {getFilteredCustomers().map(customer => (
-                            <SelectItem key={customer.id} value={customer.id}>
-                              {customer.name} {customer.position && `(${customer.position})`}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+              <CardContent className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-foreground">Company</Label>
+                  <Select value={filters.company_id} onValueChange={(value) => setFilters(prev => ({ ...prev, company_id: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All companies" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All companies</SelectItem>
+                      {companies.map(company => (
+                        <SelectItem key={company.id} value={company.id}>{company.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="actionType" className="text-foreground">Action Type *</Label>
-                      <Select value={formData.action_type} onValueChange={(value) => setFormData(prev => ({ ...prev, action_type: value }))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select action type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ACTION_TYPES.map(action => (
-                            <SelectItem key={action} value={action}>{action}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                <div className="space-y-2">
+                  <Label className="text-foreground">Customer</Label>
+                  <Select value={filters.customer_id} onValueChange={(value) => setFilters(prev => ({ ...prev, customer_id: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All customers" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All customers</SelectItem>
+                      {customers.map(customer => (
+                        <SelectItem key={customer.id} value={customer.id}>{customer.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="visitDate" className="text-foreground">Action Date *</Label>
-                      <Input
-                        id="visitDate"
-                        type="date"
-                        value={formData.visit_date}
-                        onChange={(e) => setFormData(prev => ({ ...prev, visit_date: e.target.value }))}
-                        required
-                      />
-                    </div>
+                <div className="space-y-2">
+                  <Label className="text-foreground">Action Type</Label>
+                  <Select value={filters.action_type} onValueChange={(value) => setFilters(prev => ({ ...prev, action_type: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All actions" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All actions</SelectItem>
+                      {ACTION_TYPES.map(action => (
+                        <SelectItem key={action} value={action}>{action}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="nextFollowUp" className="text-foreground">Next Action Date</Label>
-                      <Input
-                        id="nextFollowUp"
-                        type="date"
-                        value={formData.next_follow_up}
-                        onChange={(e) => setFormData(prev => ({ ...prev, next_follow_up: e.target.value }))}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="nextActionType" className="text-foreground">Next Action Type</Label>
-                      <Select value={formData.next_action_type} onValueChange={(value) => setFormData(prev => ({ ...prev, next_action_type: value }))}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select next action" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="">None</SelectItem>
-                          {ACTION_TYPES.map(action => (
-                            <SelectItem key={action} value={action}>{action}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="status" className="text-foreground">Status</Label>
-                      <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="completed">Completed</SelectItem>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="cancelled">Cancelled</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="notes" className="text-foreground">Notes</Label>
-                    <Textarea
-                      id="notes"
-                      value={formData.notes}
-                      onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                      placeholder="Add any notes about this visit..."
-                      rows={3}
-                    />
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button type="submit">
-                      {editingVisit ? 'Update Visit' : 'Record Visit'}
-                    </Button>
-                    <Button type="button" variant="outline" onClick={resetForm}>
-                      Cancel
-                    </Button>
-                  </div>
-                </form>
+                <div className="space-y-2">
+                  <Label className="text-foreground">Status</Label>
+                  <Select value={filters.status} onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All statuses" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All statuses</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="cancelled">Cancelled</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </CardContent>
             </Card>
-          )}
 
-          {/* Visit Display */}
-          {viewMode === 'table' ? (
-            <Card>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="min-w-[150px] text-foreground">Company</TableHead>
-                        <TableHead className="min-w-[120px] text-foreground">Customer</TableHead>
-                        <TableHead className="min-w-[100px] text-foreground">Action</TableHead>
-                        <TableHead className="min-w-[100px] text-foreground">Date</TableHead>
-                        <TableHead className="min-w-[80px] text-foreground">Status</TableHead>
-                        <TableHead className="min-w-[150px] text-foreground">Next Follow-up</TableHead>
-                        <TableHead className="min-w-[120px] text-foreground">Next Action</TableHead>
-                        <TableHead className="min-w-[200px] text-foreground">Notes</TableHead>
-                        <TableHead className="w-20 text-foreground">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {sortedVisits.map(visit => {
-                        const followUpStatus = getFollowUpStatus(visit.next_follow_up, visit.status);
-                        return (
+            {/* Visit Display */}
+            {viewMode === 'table' ? (
+              <Card>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="min-w-[150px] text-foreground">Company</TableHead>
+                          <TableHead className="min-w-[120px] text-foreground">Customer</TableHead>
+                          <TableHead className="min-w-[100px] text-foreground">Action</TableHead>
+                          <TableHead className="min-w-[100px] text-foreground">Date</TableHead>
+                          <TableHead className="min-w-[80px] text-foreground">Status</TableHead>
+                          <TableHead className="min-w-[150px] text-foreground">Next Follow-up</TableHead>
+                          <TableHead className="min-w-[120px] text-foreground">Next Action</TableHead>
+                          <TableHead className="min-w-[200px] text-foreground">Notes</TableHead>
+                          <TableHead className="w-20 text-foreground">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {sortedVisits.map(visit => {
+                          const followUpStatus = getFollowUpStatus(visit.next_follow_up || '', visit.status);
+                          return (
+                            <TableRow key={visit.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleCardClick(visit)}>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  {getCompanyLogo(visit.company_id) ? (
+                                    <img 
+                                      src={getCompanyLogo(visit.company_id)} 
+                                      alt="Company logo" 
+                                      className="w-6 h-6 object-cover rounded border"
+                                    />
+                                  ) : (
+                                    <div className="w-6 h-6 bg-gradient-to-br from-purple-100 to-purple-200 rounded flex items-center justify-center">
+                                      <Building2 className="w-3 h-3 text-purple-600" />
+                                    </div>
+                                  )}
+                                  <span className="font-medium text-foreground">{getCompanyName(visit.company_id)}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-foreground">{getCustomerName(visit.customer_id)}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline">{visit.action_type}</Badge>
+                              </TableCell>
+                              <TableCell className="text-foreground">{new Date(visit.visit_date).toLocaleDateString()}</TableCell>
+                              <TableCell>
+                                <Badge variant={visit.status === 'completed' ? 'default' : visit.status === 'pending' ? 'secondary' : 'destructive'}>
+                                  {visit.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {visit.next_follow_up ? (
+                                  <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1 text-sm text-foreground">
+                                      <Clock className="w-3 h-3" />
+                                      {new Date(visit.next_follow_up).toLocaleDateString()}
+                                    </div>
+                                    {followUpStatus && (
+                                      <Badge 
+                                        variant={
+                                          followUpStatus.status === 'overdue' ? 'destructive' :
+                                          followUpStatus.status === 'today' ? 'default' :
+                                          followUpStatus.status === 'urgent' ? 'secondary' :
+                                          'outline'
+                                        }
+                                        className="text-xs"
+                                      >
+                                        {followUpStatus.status === 'overdue' ? `${followUpStatus.days}d overdue` :
+                                         followUpStatus.status === 'today' ? 'Today' :
+                                         followUpStatus.status === 'urgent' ? `${followUpStatus.days}d left` :
+                                         `${followUpStatus.days}d`}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground text-sm">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {visit.next_action_type ? (
+                                  <Badge variant="outline" className="text-xs">
+                                    {visit.next_action_type}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-muted-foreground text-sm">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {visit.notes ? (
+                                  <span className="text-sm line-clamp-2 text-foreground" title={visit.notes}>
+                                    {visit.notes.length > 50 ? `${visit.notes.substring(0, 50)}...` : visit.notes}
+                                  </span>
+                                ) : (
+                                  <span className="text-muted-foreground text-sm">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                                  {visit.status === 'pending' && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleMarkComplete(visit.id)}
+                                      className="h-6 w-6 p-0"
+                                      title="Mark as complete"
+                                    >
+                                      <CheckCircle className="w-3 h-3" />
+                                    </Button>
+                                  )}
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleEdit(visit)}
+                                    className="h-6 w-6 p-0"
+                                  >
+                                    <Edit className="w-3 h-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleDelete(visit.id)}
+                                    className="h-6 w-6 p-0"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {sortedVisits.map(visit => {
+                  const followUpStatus = getFollowUpStatus(visit.next_follow_up || '', visit.status);
+                  return (
+                    <Card 
+                      key={visit.id} 
+                      className="hover:shadow-lg transition-shadow cursor-pointer" 
+                      onClick={() => handleCardClick(visit)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            {getCompanyLogo(visit.company_id) ? (
+                              <img 
+                                src={getCompanyLogo(visit.company_id)} 
+                                alt="Company logo" 
+                                className="w-10 h-10 object-cover rounded-lg border"
+                              />
+                            ) : (
+                              <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg flex items-center justify-center">
+                                <Calendar className="w-5 h-5 text-purple-600" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-sm truncate text-foreground">
+                                {visit.action_type}
+                              </h3>
+                              <div className="text-xs text-muted-foreground space-y-1">
+                                <div className="flex items-center gap-1">
+                                  <Building2 className="w-3 h-3" />
+                                  <span className="truncate text-foreground">{getCompanyName(visit.company_id)}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <Users className="w-3 h-3" />
+                                  <span className="truncate text-foreground">{getCustomerName(visit.customer_id)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                            {visit.status === 'pending' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleMarkComplete(visit.id)}
+                                className="h-6 w-6 p-0"
+                                title="Mark as complete"
+                              >
+                                <CheckCircle className="w-3 h-3" />
+                              </Button>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEdit(visit)}
+                              className="h-6 w-6 p-0"
+                            >
+                              <Edit className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleDelete(visit.id)}
+                              className="h-6 w-6 p-0"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Badge variant={visit.status === 'completed' ? 'default' : visit.status === 'pending' ? 'secondary' : 'destructive'} className="text-xs">
+                              {visit.status}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(visit.visit_date).toLocaleDateString()}
+                            </span>
+                          </div>
+                          
+                          {visit.next_follow_up && (
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <Clock className="w-3 h-3" />
+                                  <span>Next: {new Date(visit.next_follow_up).toLocaleDateString()}</span>
+                                </div>
+                                {followUpStatus && (
+                                  <Badge 
+                                    variant={
+                                      followUpStatus.status === 'overdue' ? 'destructive' :
+                                      followUpStatus.status === 'today' ? 'default' :
+                                      followUpStatus.status === 'urgent' ? 'secondary' :
+                                      'outline'
+                                    }
+                                    className="text-xs flex items-center gap-1"
+                                  >
+                                    {followUpStatus.status === 'overdue' && <AlertCircle className="w-3 h-3" />}
+                                    {followUpStatus.status === 'overdue' ? `${followUpStatus.days}d overdue` :
+                                     followUpStatus.status === 'today' ? 'Today' :
+                                     followUpStatus.status === 'urgent' ? `${followUpStatus.days}d left` :
+                                     `${followUpStatus.days}d`}
+                                  </Badge>
+                                )}
+                              </div>
+                              {visit.next_action_type && (
+                                <div className="flex items-center gap-1 text-xs">
+                                  <span className="text-muted-foreground">Action:</span>
+                                  <Badge variant="outline" className="text-xs">
+                                    {visit.next_action_type}
+                                  </Badge>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {visit.notes && (
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {visit.notes}
+                            </p>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+
+            {sortedVisits.length === 0 && (
+              <Card>
+                <CardContent className="text-center py-12">
+                  <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-2 text-foreground">No visits found</h3>
+                  <p className="text-muted-foreground mb-4">
+                    {activeTab === 'active' ? 'No active visits or follow-ups scheduled' : 'No completed visits recorded yet'}
+                  </p>
+                  <Button onClick={() => setIsAddingVisit(true)}>Record Visit</Button>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="history" className="space-y-6">
+            {/* Same structure as active tab but for completed visits */}
+            {viewMode === 'table' ? (
+              <Card>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="min-w-[150px] text-foreground">Company</TableHead>
+                          <TableHead className="min-w-[120px] text-foreground">Customer</TableHead>
+                          <TableHead className="min-w-[100px] text-foreground">Action</TableHead>
+                          <TableHead className="min-w-[100px] text-foreground">Date</TableHead>
+                          <TableHead className="min-w-[200px] text-foreground">Notes</TableHead>
+                          <TableHead className="w-20 text-foreground">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {sortedVisits.map(visit => (
                           <TableRow key={visit.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleCardClick(visit)}>
                             <TableCell>
                               <div className="flex items-center gap-2">
@@ -549,48 +835,6 @@ const VisitTracker = () => {
                             </TableCell>
                             <TableCell className="text-foreground">{new Date(visit.visit_date).toLocaleDateString()}</TableCell>
                             <TableCell>
-                              <Badge variant={visit.status === 'completed' ? 'default' : visit.status === 'pending' ? 'secondary' : 'destructive'}>
-                                {visit.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              {visit.next_follow_up ? (
-                                <div className="flex items-center gap-2">
-                                  <div className="flex items-center gap-1 text-sm text-foreground">
-                                    <Clock className="w-3 h-3" />
-                                    {new Date(visit.next_follow_up).toLocaleDateString()}
-                                  </div>
-                                  {followUpStatus && (
-                                    <Badge 
-                                      variant={
-                                        followUpStatus.status === 'overdue' ? 'destructive' :
-                                        followUpStatus.status === 'today' ? 'default' :
-                                        followUpStatus.status === 'urgent' ? 'secondary' :
-                                        'outline'
-                                      }
-                                      className="text-xs"
-                                    >
-                                      {followUpStatus.status === 'overdue' ? `${followUpStatus.days}d overdue` :
-                                       followUpStatus.status === 'today' ? 'Today' :
-                                       followUpStatus.status === 'urgent' ? `${followUpStatus.days}d left` :
-                                       `${followUpStatus.days}d`}
-                                    </Badge>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground text-sm">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {visit.next_action_type ? (
-                                <Badge variant="outline" className="text-xs">
-                                  {visit.next_action_type}
-                                </Badge>
-                              ) : (
-                                <span className="text-muted-foreground text-sm">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
                               {visit.notes ? (
                                 <span className="text-sm line-clamp-2 text-foreground" title={visit.notes}>
                                   {visit.notes.length > 50 ? `${visit.notes.substring(0, 50)}...` : visit.notes}
@@ -601,17 +845,6 @@ const VisitTracker = () => {
                             </TableCell>
                             <TableCell>
                               <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                                {visit.status === 'pending' && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleMarkComplete(visit.id)}
-                                    className="h-6 w-6 p-0"
-                                    title="Mark as complete"
-                                  >
-                                    <CheckCircle className="w-3 h-3" />
-                                  </Button>
-                                )}
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -631,18 +864,15 @@ const VisitTracker = () => {
                               </div>
                             </TableCell>
                           </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {sortedVisits.map(visit => {
-                const followUpStatus = getFollowUpStatus(visit.next_follow_up, visit.status);
-                return (
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {sortedVisits.map(visit => (
                   <Card 
                     key={visit.id} 
                     className="hover:shadow-lg transition-shadow cursor-pointer" 
@@ -679,17 +909,6 @@ const VisitTracker = () => {
                           </div>
                         </div>
                         <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                          {visit.status === 'pending' && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleMarkComplete(visit.id)}
-                              className="h-6 w-6 p-0"
-                              title="Mark as complete"
-                            >
-                              <CheckCircle className="w-3 h-3" />
-                            </Button>
-                          )}
                           <Button
                             size="sm"
                             variant="outline"
@@ -711,49 +930,13 @@ const VisitTracker = () => {
 
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <Badge variant={visit.status === 'completed' ? 'default' : visit.status === 'pending' ? 'secondary' : 'destructive'} className="text-xs">
-                            {visit.status}
+                          <Badge variant="default" className="text-xs">
+                            Completed
                           </Badge>
                           <span className="text-xs text-muted-foreground">
                             {new Date(visit.visit_date).toLocaleDateString()}
                           </span>
                         </div>
-                        
-                        {visit.next_follow_up && (
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <Clock className="w-3 h-3" />
-                                <span>Next: {new Date(visit.next_follow_up).toLocaleDateString()}</span>
-                              </div>
-                              {followUpStatus && (
-                                <Badge 
-                                  variant={
-                                    followUpStatus.status === 'overdue' ? 'destructive' :
-                                    followUpStatus.status === 'today' ? 'default' :
-                                    followUpStatus.status === 'urgent' ? 'secondary' :
-                                    'outline'
-                                  }
-                                  className="text-xs flex items-center gap-1"
-                                >
-                                  {followUpStatus.status === 'overdue' && <AlertCircle className="w-3 h-3" />}
-                                  {followUpStatus.status === 'overdue' ? `${followUpStatus.days}d overdue` :
-                                   followUpStatus.status === 'today' ? 'Today' :
-                                   followUpStatus.status === 'urgent' ? `${followUpStatus.days}d left` :
-                                   `${followUpStatus.days}d`}
-                                </Badge>
-                              )}
-                            </div>
-                            {visit.next_action_type && (
-                              <div className="flex items-center gap-1 text-xs">
-                                <span className="text-muted-foreground">Action:</span>
-                                <Badge variant="outline" className="text-xs">
-                                  {visit.next_action_type}
-                                </Badge>
-                              </div>
-                            )}
-                          </div>
-                        )}
 
                         {visit.notes && (
                           <p className="text-xs text-muted-foreground line-clamp-2">
@@ -763,193 +946,22 @@ const VisitTracker = () => {
                       </div>
                     </CardContent>
                   </Card>
-                );
-              })}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
 
-          {sortedVisits.length === 0 && companies.length > 0 && customers.length > 0 && (
-            <Card>
-              <CardContent className="text-center py-12">
-                <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2 text-foreground">No visits found</h3>
-                <p className="text-muted-foreground mb-4">
-                  {activeTab === 'active' ? 'No active visits or follow-ups scheduled' : 'No completed visits recorded yet'}
-                </p>
-                <Button onClick={() => setIsAddingVisit(true)}>Record Visit</Button>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-
-        <TabsContent value="history" className="space-y-6">
-          {/* Same filters and display logic but for completed visits */}
-          {viewMode === 'table' ? (
-            <Card>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="min-w-[150px] text-foreground">Company</TableHead>
-                        <TableHead className="min-w-[120px] text-foreground">Customer</TableHead>
-                        <TableHead className="min-w-[100px] text-foreground">Action</TableHead>
-                        <TableHead className="min-w-[100px] text-foreground">Date</TableHead>
-                        <TableHead className="min-w-[200px] text-foreground">Notes</TableHead>
-                        <TableHead className="w-20 text-foreground">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {sortedVisits.map(visit => (
-                        <TableRow key={visit.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleCardClick(visit)}>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              {getCompanyLogo(visit.company_id) ? (
-                                <img 
-                                  src={getCompanyLogo(visit.company_id)} 
-                                  alt="Company logo" 
-                                  className="w-6 h-6 object-cover rounded border"
-                                />
-                              ) : (
-                                <div className="w-6 h-6 bg-gradient-to-br from-purple-100 to-purple-200 rounded flex items-center justify-center">
-                                  <Building2 className="w-3 h-3 text-purple-600" />
-                                </div>
-                              )}
-                              <span className="font-medium text-foreground">{getCompanyName(visit.company_id)}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-foreground">{getCustomerName(visit.customer_id)}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline">{visit.action_type}</Badge>
-                          </TableCell>
-                          <TableCell className="text-foreground">{new Date(visit.visit_date).toLocaleDateString()}</TableCell>
-                          <TableCell>
-                            {visit.notes ? (
-                              <span className="text-sm line-clamp-2 text-foreground" title={visit.notes}>
-                                {visit.notes.length > 50 ? `${visit.notes.substring(0, 50)}...` : visit.notes}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground text-sm">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleEdit(visit)}
-                                className="h-6 w-6 p-0"
-                              >
-                                <Edit className="w-3 h-3" />
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleDelete(visit.id)}
-                                className="h-6 w-6 p-0"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {sortedVisits.map(visit => (
-                <Card 
-                  key={visit.id} 
-                  className="hover:shadow-lg transition-shadow cursor-pointer" 
-                  onClick={() => handleCardClick(visit)}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        {getCompanyLogo(visit.company_id) ? (
-                          <img 
-                            src={getCompanyLogo(visit.company_id)} 
-                            alt="Company logo" 
-                            className="w-10 h-10 object-cover rounded-lg border"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg flex items-center justify-center">
-                            <Calendar className="w-5 h-5 text-purple-600" />
-                          </div>
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-sm truncate text-foreground">
-                            {visit.action_type}
-                          </h3>
-                          <div className="text-xs text-muted-foreground space-y-1">
-                            <div className="flex items-center gap-1">
-                              <Building2 className="w-3 h-3" />
-                              <span className="truncate text-foreground">{getCompanyName(visit.company_id)}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Users className="w-3 h-3" />
-                              <span className="truncate text-foreground">{getCustomerName(visit.customer_id)}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEdit(visit)}
-                          className="h-6 w-6 p-0"
-                        >
-                          <Edit className="w-3 h-3" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleDelete(visit.id)}
-                          className="h-6 w-6 p-0"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <Badge variant="default" className="text-xs">
-                          Completed
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(visit.visit_date).toLocaleDateString()}
-                        </span>
-                      </div>
-
-                      {visit.notes && (
-                        <p className="text-xs text-muted-foreground line-clamp-2">
-                          {visit.notes}
-                        </p>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-
-          {sortedVisits.length === 0 && (
-            <Card>
-              <CardContent className="text-center py-12">
-                <History className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2 text-foreground">No completed visits</h3>
-                <p className="text-muted-foreground">Completed visits will appear here</p>
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-      </Tabs>
+            {sortedVisits.length === 0 && (
+              <Card>
+                <CardContent className="text-center py-12">
+                  <History className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-2 text-foreground">No completed visits</h3>
+                  <p className="text-muted-foreground">Completed visits will appear here</p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
+      )}
 
       <VisitDetailsModal 
         visit={selectedVisit}
