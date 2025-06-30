@@ -11,24 +11,30 @@ export type Database = {
     Tables: {
       companies: {
         Row: {
+          address: string | null
           created_at: string
           id: string
           logo: string | null
           name: string
+          phone: string | null
           type: string
         }
         Insert: {
+          address?: string | null
           created_at?: string
           id?: string
           logo?: string | null
           name: string
+          phone?: string | null
           type: string
         }
         Update: {
+          address?: string | null
           created_at?: string
           id?: string
           logo?: string | null
           name?: string
+          phone?: string | null
           type?: string
         }
         Relationships: []
@@ -150,6 +156,7 @@ export type Database = {
           created_at: string
           customer_id: string
           id: string
+          next_action_type: string | null
           next_follow_up: string | null
           notes: string | null
           status: string
@@ -161,6 +168,7 @@ export type Database = {
           created_at?: string
           customer_id: string
           id?: string
+          next_action_type?: string | null
           next_follow_up?: string | null
           notes?: string | null
           status?: string
@@ -172,6 +180,7 @@ export type Database = {
           created_at?: string
           customer_id?: string
           id?: string
+          next_action_type?: string | null
           next_follow_up?: string | null
           notes?: string | null
           status?: string

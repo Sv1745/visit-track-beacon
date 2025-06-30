@@ -1,271 +1,200 @@
-
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useCompanies } from '@/hooks/useCompanies';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Plus, Edit, Trash2, Upload } from 'lucide-react';
+import { Building2, Plus, Search, Upload } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { useCompanies } from '@/hooks/useCompanies';
+import { ExcelUpload } from './ExcelUpload';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-const COMPANY_TYPES = [
-  'Pharma Manufacturing',
-  'Research',
-  'Food',
-  'Cosmetics',
-  'Nutraceuticals',
-  'Biotechnology',
-  'Medical Devices',
-  'Chemical',
-  'Agriculture'
-];
+interface Company {
+  id: string;
+  name: string;
+  type: string;
+  address?: string;
+  phone?: string;
+  created_at: string;
+}
 
-const CompanyManagement = () => {
-  const { companies, addCompany, updateCompany, deleteCompany } = useCompanies();
-  const [isAddingCompany, setIsAddingCompany] = useState(false);
-  const [editingCompany, setEditingCompany] = useState(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    type: '',
-    logo: null,
-    logoPreview: null
-  });
+interface CompanyFormProps {
+  onSubmit: (company: Omit<Company, 'id' | 'created_at'>) => void;
+}
 
-  const handleSubmit = async (e) => {
+const CompanyForm: React.FC<CompanyFormProps> = ({ onSubmit }) => {
+  const [name, setName] = useState('');
+  const [type, setType] = useState('');
+  const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.name || !formData.type) {
+    if (!name || !type) {
       toast({
         title: "Error",
-        description: "Please fill in all required fields",
+        description: "Name and type are required",
         variant: "destructive",
       });
       return;
     }
-
-    try {
-      const companyData = {
-        name: formData.name,
-        type: formData.type,
-        logo: formData.logoPreview
-      };
-
-      if (editingCompany) {
-        await updateCompany(editingCompany.id, companyData);
-        toast({
-          title: "Success",
-          description: "Company updated successfully",
-        });
-      } else {
-        await addCompany(companyData);
-        toast({
-          title: "Success",
-          description: "Company added successfully",
-        });
-      }
-
-      resetForm();
-    } catch (error) {
-      // Error handling is done in the hook
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({ name: '', type: '', logo: null, logoPreview: null });
-    setIsAddingCompany(false);
-    setEditingCompany(null);
-  };
-
-  const handleEdit = (company) => {
-    setFormData({
-      name: company.name,
-      type: company.type,
-      logo: null,
-      logoPreview: company.logo
-    });
-    setEditingCompany(company);
-    setIsAddingCompany(true);
-  };
-
-  const handleDelete = async (companyId) => {
-    try {
-      await deleteCompany(companyId);
-      toast({
-        title: "Success",
-        description: "Company deleted successfully",
-      });
-    } catch (error) {
-      // Error handling is done in the hook
-    }
-  };
-
-  const handleLogoUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setFormData(prev => ({
-          ...prev,
-          logo: file,
-          logoPreview: e.target.result
-        }));
-      };
-      reader.readAsDataURL(file);
-    }
+    onSubmit({ name, type, address, phone });
+    setName('');
+    setType('');
+    setAddress('');
+    setPhone('');
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">Company Management</h2>
-        <Button 
-          onClick={() => setIsAddingCompany(true)} 
-          className="flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Add Company
-        </Button>
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <Label htmlFor="name">Name</Label>
+        <Input
+          type="text"
+          id="name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
       </div>
-
-      {isAddingCompany && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{editingCompany ? 'Edit Company' : 'Add New Company'}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Company Name *</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Enter company name"
-                    required
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="type">Company Type *</Label>
-                  <Select value={formData.type} onValueChange={(value) => setFormData(prev => ({ ...prev, type: value }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select company type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {COMPANY_TYPES.map(type => (
-                        <SelectItem key={type} value={type}>{type}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="logo">Company Logo</Label>
-                <div className="flex items-center gap-4">
-                  <Input
-                    id="logo"
-                    type="file"
-                    accept="image/*"
-                    onChange={handleLogoUpload}
-                    className="hidden"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => document.getElementById('logo').click()}
-                    className="flex items-center gap-2"
-                  >
-                    <Upload className="w-4 h-4" />
-                    Upload Logo
-                  </Button>
-                  {formData.logoPreview && (
-                    <img 
-                      src={formData.logoPreview} 
-                      alt="Logo preview" 
-                      className="w-12 h-12 object-cover rounded border"
-                    />
-                  )}
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button type="submit">
-                  {editingCompany ? 'Update Company' : 'Add Company'}
-                </Button>
-                <Button type="button" variant="outline" onClick={resetForm}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {companies.map(company => (
-          <Card key={company.id} className="hover:shadow-lg transition-shadow">
-            <CardContent className="p-4">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  {company.logo ? (
-                    <img 
-                      src={company.logo} 
-                      alt={company.name} 
-                      className="w-12 h-12 object-cover rounded-lg border"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center">
-                      <Building2 className="w-6 h-6 text-blue-600" />
-                    </div>
-                  )}
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{company.name}</h3>
-                    <Badge variant="secondary" className="text-xs">
-                      {company.type}
-                    </Badge>
-                  </div>
-                </div>
-                <div className="flex gap-1">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleEdit(company)}
-                  >
-                    <Edit className="w-3 h-3" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDelete(company.id)}
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </Button>
-                </div>
-              </div>
-              <p className="text-sm text-gray-500">
-                Added on {new Date(company.created_at).toLocaleDateString()}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
+      <div>
+        <Label htmlFor="type">Type</Label>
+        <Input
+          type="text"
+          id="type"
+          value={type}
+          onChange={(e) => setType(e.target.value)}
+        />
       </div>
-
-      {companies.length === 0 && (
-        <Card>
-          <CardContent className="text-center py-12">
-            <Building2 className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No companies yet</h3>
-            <p className="text-gray-500 mb-4">Get started by adding your first company</p>
-            <Button onClick={() => setIsAddingCompany(true)}>Add Company</Button>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+      <div>
+        <Label htmlFor="address">Address</Label>
+        <Input
+          type="text"
+          id="address"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+        />
+      </div>
+      <div>
+        <Label htmlFor="phone">Phone</Label>
+        <Input
+          type="text"
+          id="phone"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+        />
+      </div>
+      <Button type="submit">Add Company</Button>
+    </form>
   );
 };
 
-export default CompanyManagement;
+export const CompanyManagement = () => {
+  const { companies, loading, addCompany } = useCompanies();
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showAddForm, setShowAddForm] = useState(false);
+
+  const filteredCompanies = companies.filter(company =>
+    company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    company.type.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const handleAddCompany = async (company: Omit<Company, 'id' | 'created_at'>) => {
+    try {
+      await addCompany(company);
+      setShowAddForm(false);
+      toast({
+        title: "Success",
+        description: "Company added successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add company",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (loading) {
+    return <div className="flex justify-center p-8">Loading companies...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Building2 className="h-6 w-6" />
+          <h2 className="text-2xl font-bold">Company Management</h2>
+        </div>
+      </div>
+
+      <Tabs defaultValue="list" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="list">Companies</TabsTrigger>
+          <TabsTrigger value="add">Add Company</TabsTrigger>
+          <TabsTrigger value="upload">Bulk Upload</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="list" className="space-y-4 mt-4">
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search companies..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filteredCompanies.map((company) => (
+              <Card key={company.id}>
+                <CardHeader>
+                  <CardTitle className="text-lg">{company.name}</CardTitle>
+                  <CardDescription>
+                    <Badge variant="secondary">{company.type}</Badge>
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {company.address && (
+                    <p className="text-sm text-gray-600 mb-2">{company.address}</p>
+                  )}
+                  {company.phone && (
+                    <p className="text-sm text-gray-600">{company.phone}</p>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          {filteredCompanies.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              No companies found. {searchTerm ? 'Try a different search term.' : 'Add your first company!'}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="add" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Add New Company</CardTitle>
+              <CardDescription>Enter company details below</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CompanyForm onSubmit={handleAddCompany} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="upload" className="mt-4">
+          <div className="flex justify-center">
+            <ExcelUpload />
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};

@@ -7,6 +7,8 @@ export interface Company {
   id: string;
   name: string;
   type: string;
+  address?: string;
+  phone?: string;
   logo?: string;
   created_at: string;
 }
@@ -20,7 +22,7 @@ export const useCompanies = () => {
       const { data, error } = await supabase
         .from('companies')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('name');
 
       if (error) throw error;
       setCompanies(data || []);
@@ -45,15 +47,10 @@ export const useCompanies = () => {
         .single();
 
       if (error) throw error;
-      setCompanies(prev => [data, ...prev]);
+      setCompanies(prev => [...prev, data]);
       return data;
     } catch (error) {
       console.error('Error adding company:', error);
-      toast({
-        title: "Error",
-        description: "Failed to add company",
-        variant: "destructive",
-      });
       throw error;
     }
   };
@@ -68,15 +65,10 @@ export const useCompanies = () => {
         .single();
 
       if (error) throw error;
-      setCompanies(prev => prev.map(comp => comp.id === id ? data : comp));
+      setCompanies(prev => prev.map(company => company.id === id ? data : company));
       return data;
     } catch (error) {
       console.error('Error updating company:', error);
-      toast({
-        title: "Error",
-        description: "Failed to update company",
-        variant: "destructive",
-      });
       throw error;
     }
   };
@@ -89,14 +81,9 @@ export const useCompanies = () => {
         .eq('id', id);
 
       if (error) throw error;
-      setCompanies(prev => prev.filter(comp => comp.id !== id));
+      setCompanies(prev => prev.filter(company => company.id !== id));
     } catch (error) {
       console.error('Error deleting company:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete company",
-        variant: "destructive",
-      });
       throw error;
     }
   };
