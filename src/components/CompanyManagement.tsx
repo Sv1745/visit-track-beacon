@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Search, MapPin } from 'lucide-react';
+import { Building2, Search, MapPin, Edit, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { ExcelUpload } from './ExcelUpload';
 import { CompanyForm } from './CompanyForm';
 import { CompanyMap } from './CompanyMap';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 interface Company {
   id: string;
@@ -18,12 +19,15 @@ interface Company {
   type: string;
   address?: string;
   phone?: string;
+  logo?: string;
   created_at: string;
 }
 
 export const CompanyManagement = () => {
-  const { companies, loading, addCompany } = useCompanies();
+  const { companies, loading, addCompany, updateCompany, deleteCompany } = useCompanies();
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingCompany, setEditingCompany] = useState<Company | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const filteredCompanies = companies.filter(company =>
     company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -44,6 +48,49 @@ export const CompanyManagement = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleEditCompany = async (company: Omit<Company, 'id' | 'created_at'>) => {
+    if (!editingCompany) return;
+    
+    try {
+      await updateCompany(editingCompany.id, company);
+      toast({
+        title: "Success",
+        description: "Company updated successfully",
+      });
+      setIsEditDialogOpen(false);
+      setEditingCompany(null);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update company",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteCompany = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this company?')) {
+      try {
+        await deleteCompany(id);
+        toast({
+          title: "Success",
+          description: "Company deleted successfully",
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete company",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const openEditDialog = (company: Company) => {
+    setEditingCompany(company);
+    setIsEditDialogOpen(true);
   };
 
   if (loading) {
@@ -84,10 +131,42 @@ export const CompanyManagement = () => {
             {filteredCompanies.map((company) => (
               <Card key={company.id}>
                 <CardHeader>
-                  <CardTitle className="text-lg">{company.name}</CardTitle>
-                  <CardDescription>
-                    <Badge variant="secondary">{company.type}</Badge>
-                  </CardDescription>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        {company.logo && (
+                          <img 
+                            src={company.logo} 
+                            alt={`${company.name} logo`}
+                            className="w-8 h-8 object-contain rounded"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        )}
+                        <CardTitle className="text-lg">{company.name}</CardTitle>
+                      </div>
+                      <CardDescription>
+                        <Badge variant="secondary">{company.type}</Badge>
+                      </CardDescription>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEditDialog(company)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteCompany(company.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {company.address && (
@@ -130,6 +209,24 @@ export const CompanyManagement = () => {
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Company</DialogTitle>
+            <DialogDescription>
+              Update company information below
+            </DialogDescription>
+          </DialogHeader>
+          {editingCompany && (
+            <CompanyForm 
+              onSubmit={handleEditCompany}
+              initialData={editingCompany}
+              isEditing={true}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

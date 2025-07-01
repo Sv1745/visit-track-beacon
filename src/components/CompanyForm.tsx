@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,11 +12,14 @@ interface Company {
   type: string;
   address?: string;
   phone?: string;
+  logo?: string;
   created_at: string;
 }
 
 interface CompanyFormProps {
   onSubmit: (company: Omit<Company, 'id' | 'created_at'>) => void;
+  initialData?: Company;
+  isEditing?: boolean;
 }
 
 const companyTypes = [
@@ -33,11 +36,22 @@ const companyTypes = [
   'Other'
 ];
 
-export const CompanyForm: React.FC<CompanyFormProps> = ({ onSubmit }) => {
+export const CompanyForm: React.FC<CompanyFormProps> = ({ onSubmit, initialData, isEditing = false }) => {
   const [name, setName] = useState('');
   const [type, setType] = useState('');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
+  const [logo, setLogo] = useState('');
+
+  useEffect(() => {
+    if (initialData) {
+      setName(initialData.name);
+      setType(initialData.type);
+      setAddress(initialData.address || '');
+      setPhone(initialData.phone || '');
+      setLogo(initialData.logo || '');
+    }
+  }, [initialData]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,11 +63,14 @@ export const CompanyForm: React.FC<CompanyFormProps> = ({ onSubmit }) => {
       });
       return;
     }
-    onSubmit({ name, type, address, phone });
-    setName('');
-    setType('');
-    setAddress('');
-    setPhone('');
+    onSubmit({ name, type, address, phone, logo });
+    if (!isEditing) {
+      setName('');
+      setType('');
+      setAddress('');
+      setPhone('');
+      setLogo('');
+    }
   };
 
   return (
@@ -87,6 +104,17 @@ export const CompanyForm: React.FC<CompanyFormProps> = ({ onSubmit }) => {
       </div>
       
       <div className="space-y-2">
+        <Label htmlFor="logo">Company Logo URL</Label>
+        <Input
+          type="url"
+          id="logo"
+          value={logo}
+          onChange={(e) => setLogo(e.target.value)}
+          placeholder="Enter logo URL"
+        />
+      </div>
+      
+      <div className="space-y-2">
         <Label htmlFor="address">Address</Label>
         <Input
           type="text"
@@ -109,7 +137,7 @@ export const CompanyForm: React.FC<CompanyFormProps> = ({ onSubmit }) => {
       </div>
       
       <Button type="submit" className="w-full">
-        Add Company
+        {isEditing ? 'Update Company' : 'Add Company'}
       </Button>
     </form>
   );
