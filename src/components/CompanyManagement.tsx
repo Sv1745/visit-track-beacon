@@ -1,14 +1,17 @@
+
 import React, { useState } from 'react';
 import { useCompanies } from '@/hooks/useCompanies';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Plus, Search, Upload } from 'lucide-react';
+import { Building2, Search, MapPin, Edit, Trash2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { ExcelUpload } from './ExcelUpload';
+import { CompanyForm } from './CompanyForm';
+import { CompanyMap } from './CompanyMap';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 interface Company {
   id: string;
@@ -16,83 +19,15 @@ interface Company {
   type: string;
   address?: string;
   phone?: string;
+  logo?: string;
   created_at: string;
 }
 
-interface CompanyFormProps {
-  onSubmit: (company: Omit<Company, 'id' | 'created_at'>) => void;
-}
-
-const CompanyForm: React.FC<CompanyFormProps> = ({ onSubmit }) => {
-  const [name, setName] = useState('');
-  const [type, setType] = useState('');
-  const [address, setAddress] = useState('');
-  const [phone, setPhone] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name || !type) {
-      toast({
-        title: "Error",
-        description: "Name and type are required",
-        variant: "destructive",
-      });
-      return;
-    }
-    onSubmit({ name, type, address, phone });
-    setName('');
-    setType('');
-    setAddress('');
-    setPhone('');
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <Label htmlFor="name">Name</Label>
-        <Input
-          type="text"
-          id="name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-      </div>
-      <div>
-        <Label htmlFor="type">Type</Label>
-        <Input
-          type="text"
-          id="type"
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-        />
-      </div>
-      <div>
-        <Label htmlFor="address">Address</Label>
-        <Input
-          type="text"
-          id="address"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-        />
-      </div>
-      <div>
-        <Label htmlFor="phone">Phone</Label>
-        <Input
-          type="text"
-          id="phone"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-        />
-      </div>
-      <Button type="submit">Add Company</Button>
-    </form>
-  );
-};
-
 export const CompanyManagement = () => {
-  const { companies, loading, addCompany } = useCompanies();
+  const { companies, loading, addCompany, updateCompany, deleteCompany } = useCompanies();
   const [searchTerm, setSearchTerm] = useState('');
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingCompany, setEditingCompany] = useState<Company | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const filteredCompanies = companies.filter(company =>
     company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -102,7 +37,6 @@ export const CompanyManagement = () => {
   const handleAddCompany = async (company: Omit<Company, 'id' | 'created_at'>) => {
     try {
       await addCompany(company);
-      setShowAddForm(false);
       toast({
         title: "Success",
         description: "Company added successfully",
@@ -114,6 +48,49 @@ export const CompanyManagement = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleEditCompany = async (company: Omit<Company, 'id' | 'created_at'>) => {
+    if (!editingCompany) return;
+    
+    try {
+      await updateCompany(editingCompany.id, company);
+      toast({
+        title: "Success",
+        description: "Company updated successfully",
+      });
+      setIsEditDialogOpen(false);
+      setEditingCompany(null);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update company",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteCompany = async (id: string) => {
+    if (window.confirm('Are you sure you want to delete this company?')) {
+      try {
+        await deleteCompany(id);
+        toast({
+          title: "Success",
+          description: "Company deleted successfully",
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete company",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const openEditDialog = (company: Company) => {
+    setEditingCompany(company);
+    setIsEditDialogOpen(true);
   };
 
   if (loading) {
@@ -130,15 +107,16 @@ export const CompanyManagement = () => {
       </div>
 
       <Tabs defaultValue="list" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="list">Companies</TabsTrigger>
           <TabsTrigger value="add">Add Company</TabsTrigger>
+          <TabsTrigger value="map">Map View</TabsTrigger>
           <TabsTrigger value="upload">Bulk Upload</TabsTrigger>
         </TabsList>
 
         <TabsContent value="list" className="space-y-4 mt-4">
           <div className="flex items-center gap-4">
-            <div className="relative flex-1">
+            <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Search companies..."
@@ -153,10 +131,42 @@ export const CompanyManagement = () => {
             {filteredCompanies.map((company) => (
               <Card key={company.id}>
                 <CardHeader>
-                  <CardTitle className="text-lg">{company.name}</CardTitle>
-                  <CardDescription>
-                    <Badge variant="secondary">{company.type}</Badge>
-                  </CardDescription>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        {company.logo && (
+                          <img 
+                            src={company.logo} 
+                            alt={`${company.name} logo`}
+                            className="w-8 h-8 object-contain rounded"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        )}
+                        <CardTitle className="text-lg">{company.name}</CardTitle>
+                      </div>
+                      <CardDescription>
+                        <Badge variant="secondary">{company.type}</Badge>
+                      </CardDescription>
+                    </div>
+                    <div className="flex gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEditDialog(company)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteCompany(company.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   {company.address && (
@@ -189,12 +199,34 @@ export const CompanyManagement = () => {
           </Card>
         </TabsContent>
 
+        <TabsContent value="map" className="mt-4">
+          <CompanyMap companies={companies} />
+        </TabsContent>
+
         <TabsContent value="upload" className="mt-4">
           <div className="flex justify-center">
             <ExcelUpload />
           </div>
         </TabsContent>
       </Tabs>
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Company</DialogTitle>
+            <DialogDescription>
+              Update company information below
+            </DialogDescription>
+          </DialogHeader>
+          {editingCompany && (
+            <CompanyForm 
+              onSubmit={handleEditCompany}
+              initialData={editingCompany}
+              isEditing={true}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
