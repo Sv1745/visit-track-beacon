@@ -1,13 +1,15 @@
+
 import React, { useState } from 'react';
 import { useCompanies } from '@/hooks/useCompanies';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Plus, Search, Upload } from 'lucide-react';
+import { Building2, Search, MapPin } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { ExcelUpload } from './ExcelUpload';
+import { CompanyForm } from './CompanyForm';
+import { CompanyMap } from './CompanyMap';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface Company {
@@ -19,80 +21,9 @@ interface Company {
   created_at: string;
 }
 
-interface CompanyFormProps {
-  onSubmit: (company: Omit<Company, 'id' | 'created_at'>) => void;
-}
-
-const CompanyForm: React.FC<CompanyFormProps> = ({ onSubmit }) => {
-  const [name, setName] = useState('');
-  const [type, setType] = useState('');
-  const [address, setAddress] = useState('');
-  const [phone, setPhone] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name || !type) {
-      toast({
-        title: "Error",
-        description: "Name and type are required",
-        variant: "destructive",
-      });
-      return;
-    }
-    onSubmit({ name, type, address, phone });
-    setName('');
-    setType('');
-    setAddress('');
-    setPhone('');
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <Label htmlFor="name">Name</Label>
-        <Input
-          type="text"
-          id="name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-      </div>
-      <div>
-        <Label htmlFor="type">Type</Label>
-        <Input
-          type="text"
-          id="type"
-          value={type}
-          onChange={(e) => setType(e.target.value)}
-        />
-      </div>
-      <div>
-        <Label htmlFor="address">Address</Label>
-        <Input
-          type="text"
-          id="address"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-        />
-      </div>
-      <div>
-        <Label htmlFor="phone">Phone</Label>
-        <Input
-          type="text"
-          id="phone"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-        />
-      </div>
-      <Button type="submit">Add Company</Button>
-    </form>
-  );
-};
-
 export const CompanyManagement = () => {
   const { companies, loading, addCompany } = useCompanies();
   const [searchTerm, setSearchTerm] = useState('');
-  const [showAddForm, setShowAddForm] = useState(false);
 
   const filteredCompanies = companies.filter(company =>
     company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -102,7 +33,6 @@ export const CompanyManagement = () => {
   const handleAddCompany = async (company: Omit<Company, 'id' | 'created_at'>) => {
     try {
       await addCompany(company);
-      setShowAddForm(false);
       toast({
         title: "Success",
         description: "Company added successfully",
@@ -130,15 +60,16 @@ export const CompanyManagement = () => {
       </div>
 
       <Tabs defaultValue="list" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="list">Companies</TabsTrigger>
           <TabsTrigger value="add">Add Company</TabsTrigger>
+          <TabsTrigger value="map">Map View</TabsTrigger>
           <TabsTrigger value="upload">Bulk Upload</TabsTrigger>
         </TabsList>
 
         <TabsContent value="list" className="space-y-4 mt-4">
           <div className="flex items-center gap-4">
-            <div className="relative flex-1">
+            <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Search companies..."
@@ -187,6 +118,10 @@ export const CompanyManagement = () => {
               <CompanyForm onSubmit={handleAddCompany} />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="map" className="mt-4">
+          <CompanyMap companies={companies} />
         </TabsContent>
 
         <TabsContent value="upload" className="mt-4">
