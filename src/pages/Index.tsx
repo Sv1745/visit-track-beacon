@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -7,7 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { Calendar, Users, Building2, TrendingUp, Bell, Plus, Download, Phone, Clock, AlertCircle, Package, Settings } from 'lucide-react';
 import { AuthHeader } from '@/components/auth/AuthHeader';
-import CompanyManagement from '@/components/CompanyManagement';
+import { CompanyManagement } from '@/components/CompanyManagement';
 import CustomerManagement from '@/components/CustomerManagement';
 import VisitTracker from '@/components/VisitTracker';
 import ExportReport from '@/components/ExportReport';
