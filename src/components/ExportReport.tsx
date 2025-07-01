@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,8 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Download, FileText, Calendar, Filter } from 'lucide-react';
+import { Download, FileText, Calendar, Filter, FileDown } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import jsPDF from 'jspdf';
 
 interface Company {
   id: string;
@@ -163,6 +163,76 @@ const ExportReport: React.FC<ExportReportProps> = ({ visits, companies, customer
     });
   };
 
+  const exportToPDF = () => {
+    const filteredVisits = getFilteredVisits();
+    
+    if (filteredVisits.length === 0) {
+      toast({
+        title: "No Data",
+        description: "No visits found for the selected criteria",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const doc = new jsPDF();
+    const pageHeight = doc.internal.pageSize.height;
+    let yPosition = 20;
+
+    // Title
+    doc.setFontSize(20);
+    doc.text('Visit Report', 20, yPosition);
+    yPosition += 15;
+
+    // Date range
+    doc.setFontSize(12);
+    if (dateRange.startDate || dateRange.endDate) {
+      const dateText = `Period: ${dateRange.startDate || 'All'} to ${dateRange.endDate || 'All'}`;
+      doc.text(dateText, 20, yPosition);
+      yPosition += 10;
+    }
+
+    doc.text(`Total Visits: ${filteredVisits.length}`, 20, yPosition);
+    yPosition += 15;
+
+    // Table headers
+    doc.setFontSize(10);
+    doc.text('Date', 20, yPosition);
+    doc.text('Company', 50, yPosition);
+    doc.text('Customer', 100, yPosition);
+    doc.text('Action', 140, yPosition);
+    doc.text('Status', 170, yPosition);
+    yPosition += 10;
+
+    // Table rows
+    filteredVisits.forEach((visit, index) => {
+      if (yPosition > pageHeight - 20) {
+        doc.addPage();
+        yPosition = 20;
+      }
+
+      const visitDate = new Date(visit.visit_date).toLocaleDateString();
+      const companyName = getCompanyName(visit.company_id).substring(0, 15);
+      const customerName = getCustomerName(visit.customer_id).substring(0, 15);
+      const actionType = visit.action_type.substring(0, 12);
+      const status = visit.status;
+
+      doc.text(visitDate, 20, yPosition);
+      doc.text(companyName, 50, yPosition);
+      doc.text(customerName, 100, yPosition);
+      doc.text(actionType, 140, yPosition);
+      doc.text(status, 170, yPosition);
+      yPosition += 8;
+    });
+
+    doc.save(`visit-report-${new Date().toISOString().split('T')[0]}.pdf`);
+
+    toast({
+      title: "Export Successful",
+      description: `Exported ${filteredVisits.length} visits to PDF`,
+    });
+  };
+
   const companyTypes = [...new Set(companies.map(company => company.type))];
   const actionTypes = [...new Set(visits.map(visit => visit.action_type))];
   const filteredVisits = getFilteredVisits();
@@ -170,12 +240,12 @@ const ExportReport: React.FC<ExportReportProps> = ({ visits, companies, customer
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Export Reports</h2>
+        <h2 className="text-2xl font-bold text-foreground">Export Reports</h2>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-foreground">
             <Filter className="w-5 h-5" />
             Filter Options
           </CardTitle>
@@ -183,7 +253,7 @@ const ExportReport: React.FC<ExportReportProps> = ({ visits, companies, customer
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="startDate">Start Date</Label>
+              <Label htmlFor="startDate" className="text-foreground">Start Date</Label>
               <Input
                 id="startDate"
                 type="date"
@@ -193,7 +263,7 @@ const ExportReport: React.FC<ExportReportProps> = ({ visits, companies, customer
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="endDate">End Date</Label>
+              <Label htmlFor="endDate" className="text-foreground">End Date</Label>
               <Input
                 id="endDate"
                 type="date"
@@ -203,7 +273,7 @@ const ExportReport: React.FC<ExportReportProps> = ({ visits, companies, customer
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="company">Company</Label>
+              <Label htmlFor="company" className="text-foreground">Company</Label>
               <Select value={selectedCompany} onValueChange={setSelectedCompany}>
                 <SelectTrigger>
                   <SelectValue placeholder="All companies" />
@@ -218,7 +288,7 @@ const ExportReport: React.FC<ExportReportProps> = ({ visits, companies, customer
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="customer">Customer</Label>
+              <Label htmlFor="customer" className="text-foreground">Customer</Label>
               <Select value={selectedCustomer} onValueChange={setSelectedCustomer}>
                 <SelectTrigger>
                   <SelectValue placeholder="All customers" />
@@ -233,7 +303,7 @@ const ExportReport: React.FC<ExportReportProps> = ({ visits, companies, customer
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="companyType">Company Type</Label>
+              <Label htmlFor="companyType" className="text-foreground">Company Type</Label>
               <Select value={selectedCompanyType} onValueChange={setSelectedCompanyType}>
                 <SelectTrigger>
                   <SelectValue placeholder="All types" />
@@ -248,7 +318,7 @@ const ExportReport: React.FC<ExportReportProps> = ({ visits, companies, customer
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="actionType">Action Type</Label>
+              <Label htmlFor="actionType" className="text-foreground">Action Type</Label>
               <Select value={selectedActionType} onValueChange={setSelectedActionType}>
                 <SelectTrigger>
                   <SelectValue placeholder="All actions" />
@@ -267,17 +337,23 @@ const ExportReport: React.FC<ExportReportProps> = ({ visits, companies, customer
             <div className="text-sm text-muted-foreground">
               {filteredVisits.length} visit(s) match your criteria
             </div>
-            <Button onClick={exportToCSV} className="flex items-center gap-2" disabled={filteredVisits.length === 0}>
-              <Download className="w-4 h-4" />
-              Export to CSV
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={exportToCSV} className="flex items-center gap-2" disabled={filteredVisits.length === 0}>
+                <Download className="w-4 h-4" />
+                Export to CSV
+              </Button>
+              <Button onClick={exportToPDF} className="flex items-center gap-2" disabled={filteredVisits.length === 0}>
+                <FileDown className="w-4 h-4" />
+                Export to PDF
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-foreground">
             <FileText className="w-5 h-5" />
             Preview ({filteredVisits.length} visits)
           </CardTitle>
@@ -286,7 +362,7 @@ const ExportReport: React.FC<ExportReportProps> = ({ visits, companies, customer
           {filteredVisits.length === 0 ? (
             <div className="text-center py-8">
               <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium mb-2">No visits found</h3>
+              <h3 className="text-lg font-medium mb-2 text-foreground">No visits found</h3>
               <p className="text-muted-foreground">Adjust your filter criteria to see visits</p>
             </div>
           ) : (
@@ -295,7 +371,7 @@ const ExportReport: React.FC<ExportReportProps> = ({ visits, companies, customer
                 <div key={visit.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="font-medium">{getCompanyName(visit.company_id)}</span>
+                      <span className="font-medium text-foreground">{getCompanyName(visit.company_id)}</span>
                       <Badge variant="outline" className="text-xs">
                         {getCompanyType(visit.company_id)}
                       </Badge>
@@ -323,7 +399,7 @@ const ExportReport: React.FC<ExportReportProps> = ({ visits, companies, customer
         <Card>
           <CardContent className="text-center py-12">
             <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">No visits to export</h3>
+            <h3 className="text-lg font-medium mb-2 text-foreground">No visits to export</h3>
             <p className="text-muted-foreground">Start recording visits to generate reports</p>
           </CardContent>
         </Card>

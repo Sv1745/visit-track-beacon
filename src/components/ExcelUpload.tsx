@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Upload, FileSpreadsheet } from 'lucide-react';
+import { Upload, FileSpreadsheet, CheckCircle, AlertCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -17,27 +17,44 @@ interface CompanyData {
 export const ExcelUpload = () => {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [preview, setPreview] = useState<CompanyData[]>([]);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
-      if (selectedFile.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
-          selectedFile.type === 'application/vnd.ms-excel' ||
-          selectedFile.name.endsWith('.csv')) {
+      if (selectedFile.type === 'text/csv' || 
+          selectedFile.name.endsWith('.csv') ||
+          selectedFile.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
+          selectedFile.type === 'application/vnd.ms-excel') {
         setFile(selectedFile);
+        if (selectedFile.name.endsWith('.csv')) {
+          previewCSV(selectedFile);
+        }
       } else {
         toast({
           title: "Invalid file type",
-          description: "Please upload an Excel (.xlsx, .xls) or CSV file",
+          description: "Please upload a CSV file (.csv)",
           variant: "destructive",
         });
       }
     }
   };
 
+  const previewCSV = async (file: File) => {
+    try {
+      const text = await file.text();
+      const companies = parseCSV(text);
+      setPreview(companies.slice(0, 5)); // Show first 5 for preview
+    } catch (error) {
+      console.error('Preview error:', error);
+    }
+  };
+
   const parseCSV = (text: string): CompanyData[] => {
     const lines = text.trim().split('\n');
-    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    if (lines.length < 2) return [];
+    
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
     
     return lines.slice(1).map(line => {
       const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
@@ -48,10 +65,15 @@ export const ExcelUpload = () => {
       
       headers.forEach((header, index) => {
         const value = values[index] || '';
-        if (header.includes('name')) company.name = value;
-        else if (header.includes('type')) company.type = value;
-        else if (header.includes('address')) company.address = value;
-        else if (header.includes('phone')) company.phone = value;
+        if (header.includes('name') || header.includes('company')) {
+          company.name = value;
+        } else if (header.includes('type')) {
+          company.type = value;
+        } else if (header.includes('address')) {
+          company.address = value;
+        } else if (header.includes('phone')) {
+          company.phone = value;
+        }
       });
       
       return company;
@@ -62,7 +84,7 @@ export const ExcelUpload = () => {
     if (!file) {
       toast({
         title: "No file selected",
-        description: "Please select a file to upload",
+        description: "Please select a CSV file to upload",
         variant: "destructive",
       });
       return;
@@ -76,10 +98,9 @@ export const ExcelUpload = () => {
       if (file.name.endsWith('.csv')) {
         companies = parseCSV(text);
       } else {
-        // For Excel files, we'll need a library like xlsx
         toast({
-          title: "Excel files not yet supported",
-          description: "Please use CSV format for now. Expected columns: Company Name, Company Type, Address, Phone",
+          title: "Excel files not supported",
+          description: "Please convert your Excel file to CSV format and try again",
           variant: "destructive",
         });
         return;
@@ -88,7 +109,7 @@ export const ExcelUpload = () => {
       if (companies.length === 0) {
         toast({
           title: "No valid data found",
-          description: "Please ensure your file has columns for Company Name and Company Type",
+          description: "Please ensure your CSV has columns: Company Name, Company Type, Address (optional), Phone (optional)",
           variant: "destructive",
         });
         return;
@@ -107,6 +128,7 @@ export const ExcelUpload = () => {
       });
 
       setFile(null);
+      setPreview([]);
       // Reset file input
       const fileInput = document.getElementById('file-input') as HTMLInputElement;
       if (fileInput) fileInput.value = '';
@@ -115,7 +137,7 @@ export const ExcelUpload = () => {
       console.error('Upload error:', error);
       toast({
         title: "Upload failed",
-        description: "Failed to upload companies. Please check your file format.",
+        description: "Failed to upload companies. Please check your file format and try again.",
         variant: "destructive",
       });
     } finally {
@@ -124,14 +146,14 @@ export const ExcelUpload = () => {
   };
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full max-w-2xl">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex items-center gap-2 text-foreground">
           <FileSpreadsheet className="h-5 w-5" />
-          Upload Companies
+          Upload Companies from CSV
         </CardTitle>
         <CardDescription>
-          Upload company data from CSV file
+          Upload company data from CSV file with columns: Company Name, Company Type, Address, Phone
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -139,18 +161,41 @@ export const ExcelUpload = () => {
           <Input
             id="file-input"
             type="file"
-            accept=".csv,.xlsx,.xls"
+            accept=".csv"
             onChange={handleFileChange}
             className="cursor-pointer"
           />
-          <p className="text-sm text-gray-500 mt-2">
-            CSV format: Company Name, Company Type, Address, Phone
-          </p>
+          <div className="text-sm text-muted-foreground mt-2 space-y-1">
+            <p>Expected CSV format:</p>
+            <p className="font-mono text-xs bg-muted p-2 rounded">
+              Company Name,Company Type,Address,Phone<br/>
+              ABC Corp,Manufacturing,123 Main St,555-0123<br/>
+              XYZ Ltd,Services,456 Oak Ave,555-0456
+            </p>
+          </div>
         </div>
         
         {file && (
-          <div className="text-sm text-gray-600">
-            Selected: {file.name}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm text-foreground">
+              <CheckCircle className="w-4 h-4 text-green-500" />
+              Selected: {file.name}
+            </div>
+            
+            {preview.length > 0 && (
+              <div className="border rounded-lg p-3">
+                <h4 className="font-medium text-foreground mb-2">Preview (first 5 rows):</h4>
+                <div className="space-y-2">
+                  {preview.map((company, index) => (
+                    <div key={index} className="text-sm bg-muted/50 p-2 rounded">
+                      <span className="font-medium text-foreground">{company.name}</span> - {company.type}
+                      {company.address && <span className="text-muted-foreground"> • {company.address}</span>}
+                      {company.phone && <span className="text-muted-foreground"> • {company.phone}</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
