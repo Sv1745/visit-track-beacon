@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { useUser } from '@clerk/clerk-react';
 
 export interface Customer {
   id: string;
@@ -18,7 +17,6 @@ export interface Customer {
 export const useCustomers = () => {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useUser();
 
   const fetchCustomers = async () => {
     try {
@@ -43,11 +41,9 @@ export const useCustomers = () => {
 
   const addCustomer = async (customer: Omit<Customer, 'id' | 'created_at' | 'user_id'>) => {
     try {
-      if (!user) throw new Error('User not authenticated');
-
       const { data, error } = await supabase
         .from('customers')
-        .insert([{ ...customer, user_id: user.id }])
+        .insert([{ ...customer, user_id: 'current_user' }])
         .select()
         .single();
 
