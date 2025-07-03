@@ -18,6 +18,7 @@ export type Database = {
           name: string
           phone: string | null
           type: string
+          user_id: string
         }
         Insert: {
           address?: string | null
@@ -27,6 +28,7 @@ export type Database = {
           name: string
           phone?: string | null
           type: string
+          user_id: string
         }
         Update: {
           address?: string | null
@@ -36,6 +38,7 @@ export type Database = {
           name?: string
           phone?: string | null
           type?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -48,6 +51,7 @@ export type Database = {
           name: string
           phone: string | null
           position: string | null
+          user_id: string
         }
         Insert: {
           company_id: string
@@ -57,6 +61,7 @@ export type Database = {
           name: string
           phone?: string | null
           position?: string | null
+          user_id: string
         }
         Update: {
           company_id?: string
@@ -66,6 +71,7 @@ export type Database = {
           name?: string
           phone?: string | null
           position?: string | null
+          user_id?: string
         }
         Relationships: [
           {
@@ -107,6 +113,7 @@ export type Database = {
           required_period: string
           status: string
           updated_at: string
+          user_id: string
         }
         Insert: {
           company_id: string
@@ -119,6 +126,7 @@ export type Database = {
           required_period: string
           status?: string
           updated_at?: string
+          user_id: string
         }
         Update: {
           company_id?: string
@@ -131,6 +139,7 @@ export type Database = {
           required_period?: string
           status?: string
           updated_at?: string
+          user_id?: string
         }
         Relationships: [
           {
@@ -160,6 +169,7 @@ export type Database = {
           next_follow_up: string | null
           notes: string | null
           status: string
+          user_id: string
           visit_date: string
         }
         Insert: {
@@ -172,6 +182,7 @@ export type Database = {
           next_follow_up?: string | null
           notes?: string | null
           status?: string
+          user_id: string
           visit_date: string
         }
         Update: {
@@ -184,6 +195,7 @@ export type Database = {
           next_follow_up?: string | null
           notes?: string | null
           status?: string
+          user_id?: string
           visit_date?: string
         }
         Relationships: [

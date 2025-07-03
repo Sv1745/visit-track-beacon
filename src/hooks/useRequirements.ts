@@ -12,6 +12,7 @@ export interface Requirement {
   status: string;
   notes?: string;
   recorded_date: string;
+  user_id: string;
   created_at: string;
   updated_at: string;
 }
@@ -47,11 +48,14 @@ export const useRequirements = () => {
     }
   };
 
-  const addRequirement = async (requirement: Omit<Requirement, 'id' | 'created_at' | 'updated_at'>) => {
+  const addRequirement = async (requirement: Omit<Requirement, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('requirements')
-        .insert([requirement])
+        .insert([{ ...requirement, user_id: user.id }])
         .select()
         .single();
 

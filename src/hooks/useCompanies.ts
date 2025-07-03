@@ -10,6 +10,7 @@ export interface Company {
   address?: string;
   phone?: string;
   logo?: string;
+  user_id: string;
   created_at: string;
 }
 
@@ -38,11 +39,14 @@ export const useCompanies = () => {
     }
   };
 
-  const addCompany = async (company: Omit<Company, 'id' | 'created_at'>) => {
+  const addCompany = async (company: Omit<Company, 'id' | 'created_at' | 'user_id'>) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('companies')
-        .insert([company])
+        .insert([{ ...company, user_id: user.id }])
         .select()
         .single();
 

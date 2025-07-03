@@ -10,6 +10,7 @@ export interface Customer {
   position?: string;
   email?: string;
   phone?: string;
+  user_id: string;
   created_at: string;
 }
 
@@ -38,11 +39,14 @@ export const useCustomers = () => {
     }
   };
 
-  const addCustomer = async (customer: Omit<Customer, 'id' | 'created_at'>) => {
+  const addCustomer = async (customer: Omit<Customer, 'id' | 'created_at' | 'user_id'>) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('customers')
-        .insert([customer])
+        .insert([{ ...customer, user_id: user.id }])
         .select()
         .single();
 

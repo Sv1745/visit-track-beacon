@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { useCompanies } from '@/hooks/useCompanies';
+import { useCompanies, Company } from '@/hooks/useCompanies';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,16 +13,6 @@ import { CompanyMap } from './CompanyMap';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
-interface Company {
-  id: string;
-  name: string;
-  type: string;
-  address?: string;
-  phone?: string;
-  logo?: string;
-  created_at: string;
-}
-
 export const CompanyManagement = () => {
   const { companies, loading, addCompany, updateCompany, deleteCompany } = useCompanies();
   const [searchTerm, setSearchTerm] = useState('');
@@ -34,7 +24,7 @@ export const CompanyManagement = () => {
     company.type.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleAddCompany = async (company: Omit<Company, 'id' | 'created_at'>) => {
+  const handleAddCompany = async (company: Omit<Company, 'id' | 'created_at' | 'user_id'>) => {
     try {
       await addCompany(company);
       toast({
@@ -50,7 +40,7 @@ export const CompanyManagement = () => {
     }
   };
 
-  const handleEditCompany = async (company: Omit<Company, 'id' | 'created_at'>) => {
+  const handleEditCompany = async (company: Omit<Company, 'id' | 'created_at' | 'user_id'>) => {
     if (!editingCompany) return;
     
     try {
@@ -188,15 +178,7 @@ export const CompanyManagement = () => {
         </TabsContent>
 
         <TabsContent value="add" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Add New Company</CardTitle>
-              <CardDescription>Enter company details below</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <CompanyForm onSubmit={handleAddCompany} />
-            </CardContent>
-          </Card>
+          <CompanyForm onSubmit={handleAddCompany} />
         </TabsContent>
 
         <TabsContent value="map" className="mt-4">

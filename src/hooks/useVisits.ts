@@ -13,6 +13,7 @@ export interface Visit {
   next_follow_up?: string;
   next_action_type?: string;
   status: string;
+  user_id: string;
   created_at: string;
 }
 
@@ -41,11 +42,14 @@ export const useVisits = () => {
     }
   };
 
-  const addVisit = async (visit: Omit<Visit, 'id' | 'created_at'>) => {
+  const addVisit = async (visit: Omit<Visit, 'id' | 'created_at' | 'user_id'>) => {
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       const { data, error } = await supabase
         .from('visits')
-        .insert([visit])
+        .insert([{ ...visit, user_id: user.id }])
         .select()
         .single();
 

@@ -115,10 +115,15 @@ export const ExcelUpload = () => {
         return;
       }
 
-      // Insert companies into database
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      // Insert companies with user_id
+      const companiesWithUserId = companies.map(company => ({ ...company, user_id: user.id }));
       const { data, error } = await supabase
         .from('companies')
-        .insert(companies);
+        .insert(companiesWithUserId);
 
       if (error) throw error;
 
