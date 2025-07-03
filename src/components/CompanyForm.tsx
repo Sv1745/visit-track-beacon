@@ -26,16 +26,21 @@ interface CompanyFormProps {
 }
 
 const companyTypes = [
-  'Manufacturing',
-  'Services',
-  'Technology',
-  'Healthcare',
-  'Finance',
-  'Education',
-  'Retail',
-  'Construction',
-  'Transportation',
-  'Energy',
+  'Pharmaceutical Manufacturing',
+  'Biotechnology',
+  'Medical Device Manufacturing',
+  'Contract Research Organization (CRO)',
+  'Contract Manufacturing Organization (CMO)',
+  'Generic Drug Manufacturing',
+  'Vaccine Manufacturing',
+  'API (Active Pharmaceutical Ingredient) Manufacturing',
+  'Pharmaceutical Distribution',
+  'Clinical Research',
+  'Regulatory Affairs',
+  'Pharmaceutical Consulting',
+  'Laboratory Services',
+  'Medical Equipment',
+  'Healthcare Technology',
   'Other'
 ];
 
