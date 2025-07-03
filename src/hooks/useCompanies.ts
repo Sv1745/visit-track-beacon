@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useUser } from '@clerk/clerk-react';
 
 export interface Company {
   id: string;
@@ -17,6 +18,7 @@ export interface Company {
 export const useCompanies = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useUser();
 
   const fetchCompanies = async () => {
     try {
@@ -41,7 +43,6 @@ export const useCompanies = () => {
 
   const addCompany = async (company: Omit<Company, 'id' | 'created_at' | 'user_id'>) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
       const { data, error } = await supabase

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useUser } from '@clerk/clerk-react';
 
 export interface Requirement {
   id: string;
@@ -26,6 +27,7 @@ export interface EquipmentType {
 export const useRequirements = () => {
   const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useUser();
 
   const fetchRequirements = async () => {
     try {
@@ -50,7 +52,6 @@ export const useRequirements = () => {
 
   const addRequirement = async (requirement: Omit<Requirement, 'id' | 'created_at' | 'updated_at' | 'user_id'>) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
       const { data, error } = await supabase
