@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { useUser } from '@clerk/clerk-react';
+import { useAuth } from './useAuth';
 
 export interface Requirement {
   id: string;
@@ -27,21 +27,29 @@ export interface EquipmentType {
 export const useRequirements = () => {
   const [requirements, setRequirements] = useState<Requirement[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useUser();
+  const { user, isAuthenticated } = useAuth();
 
   const fetchRequirements = async () => {
-    if (!user) {
+    if (!isAuthenticated || !user) {
+      setRequirements([]);
       setLoading(false);
       return;
     }
 
     try {
+      console.log('Fetching requirements for user:', user.id);
       const { data, error } = await supabase
         .from('requirements')
         .select('*')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      console.log('Fetched requirements:', data);
       setRequirements(data || []);
     } catch (error) {
       console.error('Error fetching requirements:', error);
@@ -59,6 +67,7 @@ export const useRequirements = () => {
     if (!user) throw new Error('User not authenticated');
 
     try {
+      console.log('Adding requirement for user:', user.id);
       const { data, error } = await supabase
         .from('requirements')
         .insert([{ ...requirement, user_id: user.id }])
@@ -75,11 +84,14 @@ export const useRequirements = () => {
   };
 
   const updateRequirement = async (id: string, updates: Partial<Requirement>) => {
+    if (!user) throw new Error('User not authenticated');
+
     try {
       const { data, error } = await supabase
         .from('requirements')
         .update({ ...updates, updated_at: new Date().toISOString() })
         .eq('id', id)
+        .eq('user_id', user.id)
         .select()
         .single();
 
@@ -93,11 +105,14 @@ export const useRequirements = () => {
   };
 
   const deleteRequirement = async (id: string) => {
+    if (!user) throw new Error('User not authenticated');
+
     try {
       const { error } = await supabase
         .from('requirements')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', user.id);
 
       if (error) throw error;
       setRequirements(prev => prev.filter(req => req.id !== id));
@@ -108,8 +123,10 @@ export const useRequirements = () => {
   };
 
   useEffect(() => {
-    fetchRequirements();
-  }, [user]);
+    if (isAuthenticated) {
+      fetchRequirements();
+    }
+  }, [user, isAuthenticated]);
 
   return {
     requirements,

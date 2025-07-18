@@ -7,26 +7,69 @@ export const useAuth = () => {
   const { user, isLoaded } = useUser();
 
   useEffect(() => {
-    // Create a fake session for Supabase when user is authenticated with Clerk
-    if (isLoaded && user) {
-      // Set a fake session to make Supabase think the user is authenticated
-      const fakeSession = {
-        access_token: 'fake-token',
-        refresh_token: 'fake-refresh',
-        expires_in: 3600,
-        token_type: 'bearer',
-        user: {
-          id: user.id,
-          email: user.primaryEmailAddress?.emailAddress || '',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        }
-      };
+    const setSupabaseSession = async () => {
+      if (isLoaded && user) {
+        try {
+          // Create a proper JWT token for Supabase that includes Clerk user ID
+          const token = await user.getToken({ template: 'supabase' });
+          
+          if (token) {
+            // Set the session with the Clerk JWT token
+            await supabase.auth.setSession({
+              access_token: token,
+              refresh_token: 'clerk-refresh-token',
+            });
+          } else {
+            // Fallback: create a simple session with user info
+            const fakeSession = {
+              access_token: `clerk-${user.id}`,
+              refresh_token: 'clerk-refresh',
+              expires_in: 3600,
+              token_type: 'bearer',
+              user: {
+                id: user.id,
+                email: user.primaryEmailAddress?.emailAddress || '',
+                user_metadata: {
+                  clerk_user_id: user.id,
+                  email: user.primaryEmailAddress?.emailAddress || '',
+                  full_name: user.fullName || '',
+                },
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              }
+            };
 
-      // This is a workaround to make Supabase RLS work with Clerk
-      // We set the session manually
-      supabase.auth.setSession(fakeSession as any);
-    }
+            await supabase.auth.setSession(fakeSession as any);
+          }
+        } catch (error) {
+          console.error('Error setting Supabase session:', error);
+          
+          // Fallback session creation
+          const fakeSession = {
+            access_token: `clerk-${user.id}`,
+            refresh_token: 'clerk-refresh',
+            expires_in: 3600,
+            token_type: 'bearer',
+            user: {
+              id: user.id,
+              email: user.primaryEmailAddress?.emailAddress || '',
+              user_metadata: {
+                clerk_user_id: user.id,
+              },
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }
+          };
+
+          await supabase.auth.setSession(fakeSession as any);
+        }
+      } else if (isLoaded && !user) {
+        // User is not authenticated, clear the session
+        await supabase.auth.signOut();
+      }
+    };
+
+    setSupabaseSession();
   }, [user, isLoaded]);
 
   return {

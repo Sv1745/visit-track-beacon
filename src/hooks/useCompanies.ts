@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { useUser } from '@clerk/clerk-react';
+import { useAuth } from './useAuth';
 
 export interface Company {
   id: string;
@@ -18,21 +18,29 @@ export interface Company {
 export const useCompanies = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useUser();
+  const { user, isAuthenticated } = useAuth();
 
   const fetchCompanies = async () => {
-    if (!user) {
+    if (!isAuthenticated || !user) {
+      setCompanies([]);
       setLoading(false);
       return;
     }
 
     try {
+      console.log('Fetching companies for user:', user.id);
       const { data, error } = await supabase
         .from('companies')
         .select('*')
+        .eq('user_id', user.id)
         .order('name');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      console.log('Fetched companies:', data);
       setCompanies(data || []);
     } catch (error) {
       console.error('Error fetching companies:', error);
@@ -50,6 +58,7 @@ export const useCompanies = () => {
     if (!user) throw new Error('User not authenticated');
 
     try {
+      console.log('Adding company for user:', user.id);
       const { data, error } = await supabase
         .from('companies')
         .insert([{ ...company, user_id: user.id }])
@@ -66,11 +75,14 @@ export const useCompanies = () => {
   };
 
   const updateCompany = async (id: string, updates: Partial<Company>) => {
+    if (!user) throw new Error('User not authenticated');
+
     try {
       const { data, error } = await supabase
         .from('companies')
         .update(updates)
         .eq('id', id)
+        .eq('user_id', user.id)
         .select()
         .single();
 
@@ -84,11 +96,14 @@ export const useCompanies = () => {
   };
 
   const deleteCompany = async (id: string) => {
+    if (!user) throw new Error('User not authenticated');
+
     try {
       const { error } = await supabase
         .from('companies')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', user.id);
 
       if (error) throw error;
       setCompanies(prev => prev.filter(company => company.id !== id));
@@ -99,8 +114,10 @@ export const useCompanies = () => {
   };
 
   useEffect(() => {
-    fetchCompanies();
-  }, [user]);
+    if (isAuthenticated) {
+      fetchCompanies();
+    }
+  }, [user, isAuthenticated]);
 
   return {
     companies,

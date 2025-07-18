@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { useUser } from '@clerk/clerk-react';
+import { useAuth } from './useAuth';
 
 export interface Visit {
   id: string;
@@ -21,21 +21,29 @@ export interface Visit {
 export const useVisits = () => {
   const [visits, setVisits] = useState<Visit[]>([]);
   const [loading, setLoading] = useState(true);
-  const { user } = useUser();
+  const { user, isAuthenticated } = useAuth();
 
   const fetchVisits = async () => {
-    if (!user) {
+    if (!isAuthenticated || !user) {
+      setVisits([]);
       setLoading(false);
       return;
     }
 
     try {
+      console.log('Fetching visits for user:', user.id);
       const { data, error } = await supabase
         .from('visits')
         .select('*')
+        .eq('user_id', user.id)
         .order('visit_date', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+      
+      console.log('Fetched visits:', data);
       setVisits(data || []);
     } catch (error) {
       console.error('Error fetching visits:', error);
@@ -53,6 +61,7 @@ export const useVisits = () => {
     if (!user) throw new Error('User not authenticated');
 
     try {
+      console.log('Adding visit for user:', user.id);
       const { data, error } = await supabase
         .from('visits')
         .insert([{ ...visit, user_id: user.id }])
@@ -74,11 +83,14 @@ export const useVisits = () => {
   };
 
   const updateVisit = async (id: string, updates: Partial<Visit>) => {
+    if (!user) throw new Error('User not authenticated');
+
     try {
       const { data, error } = await supabase
         .from('visits')
         .update(updates)
         .eq('id', id)
+        .eq('user_id', user.id)
         .select()
         .single();
 
@@ -97,11 +109,14 @@ export const useVisits = () => {
   };
 
   const deleteVisit = async (id: string) => {
+    if (!user) throw new Error('User not authenticated');
+
     try {
       const { error } = await supabase
         .from('visits')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', user.id);
 
       if (error) throw error;
       setVisits(prev => prev.filter(visit => visit.id !== id));
@@ -117,8 +132,10 @@ export const useVisits = () => {
   };
 
   useEffect(() => {
-    fetchVisits();
-  }, [user]);
+    if (isAuthenticated) {
+      fetchVisits();
+    }
+  }, [user, isAuthenticated]);
 
   return {
     visits,
