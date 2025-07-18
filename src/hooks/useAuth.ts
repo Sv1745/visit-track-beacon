@@ -1,17 +1,18 @@
 
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useAuth as useClerkAuth } from '@clerk/clerk-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useEffect } from 'react';
 
 export const useAuth = () => {
   const { user, isLoaded } = useUser();
+  const { getToken } = useClerkAuth();
 
   useEffect(() => {
     const setSupabaseSession = async () => {
       if (isLoaded && user) {
         try {
-          // Create a proper JWT token for Supabase that includes Clerk user ID
-          const token = await user.getToken({ template: 'supabase' });
+          // Get the JWT token using the getToken method from useAuth
+          const token = await getToken({ template: 'supabase' });
           
           if (token) {
             // Set the session with the Clerk JWT token
@@ -70,7 +71,7 @@ export const useAuth = () => {
     };
 
     setSupabaseSession();
-  }, [user, isLoaded]);
+  }, [user, isLoaded, getToken]);
 
   return {
     user,
