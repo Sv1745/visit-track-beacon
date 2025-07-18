@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useUser } from '@clerk/clerk-react';
 
 export interface Visit {
   id: string;
@@ -20,8 +21,14 @@ export interface Visit {
 export const useVisits = () => {
   const [visits, setVisits] = useState<Visit[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useUser();
 
   const fetchVisits = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('visits')
@@ -43,10 +50,12 @@ export const useVisits = () => {
   };
 
   const addVisit = async (visit: Omit<Visit, 'id' | 'created_at' | 'user_id'>) => {
+    if (!user) throw new Error('User not authenticated');
+
     try {
       const { data, error } = await supabase
         .from('visits')
-        .insert([{ ...visit, user_id: 'current_user' }])
+        .insert([{ ...visit, user_id: user.id }])
         .select()
         .single();
 
@@ -109,7 +118,7 @@ export const useVisits = () => {
 
   useEffect(() => {
     fetchVisits();
-  }, []);
+  }, [user]);
 
   return {
     visits,

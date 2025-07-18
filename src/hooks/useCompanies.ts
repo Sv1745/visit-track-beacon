@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useUser } from '@clerk/clerk-react';
 
 export interface Company {
   id: string;
@@ -17,8 +18,14 @@ export interface Company {
 export const useCompanies = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useUser();
 
   const fetchCompanies = async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('companies')
@@ -40,11 +47,12 @@ export const useCompanies = () => {
   };
 
   const addCompany = async (company: Omit<Company, 'id' | 'created_at' | 'user_id'>) => {
+    if (!user) throw new Error('User not authenticated');
+
     try {
-      // For now, we'll use a placeholder user_id until proper Clerk integration
       const { data, error } = await supabase
         .from('companies')
-        .insert([{ ...company, user_id: 'current_user' }])
+        .insert([{ ...company, user_id: user.id }])
         .select()
         .single();
 
@@ -92,7 +100,7 @@ export const useCompanies = () => {
 
   useEffect(() => {
     fetchCompanies();
-  }, []);
+  }, [user]);
 
   return {
     companies,
