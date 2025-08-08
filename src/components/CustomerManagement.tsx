@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,6 +9,7 @@ import { Users, Plus, Edit, Trash2, Building2, Mail, Phone } from 'lucide-react'
 import { toast } from '@/hooks/use-toast';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useCompanies } from '@/hooks/useCompanies';
+import { sanitizeInput, validateCustomerName, validateEmail, validatePhone } from '@/utils/security';
 
 const CustomerManagement = () => {
   const { customers, addCustomer, updateCustomer, deleteCustomer } = useCustomers();
@@ -27,6 +27,7 @@ const CustomerManagement = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Validate required fields
     if (!formData.name || !formData.email || !formData.company_id) {
       toast({
         title: "Error",
@@ -36,23 +37,52 @@ const CustomerManagement = () => {
       return;
     }
 
+    // Validate and sanitize input data
+    const nameValidation = validateCustomerName(formData.name);
+    if (!nameValidation.isValid) {
+      toast({
+        title: "Validation Error",
+        description: nameValidation.error,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!validateEmail(formData.email)) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a valid email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!validatePhone(formData.phone)) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a valid phone number",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      const customerData = {
-        name: formData.name,
-        email: formData.email,
-        phone: formData.phone,
-        position: formData.position,
-        company_id: formData.company_id
+      const sanitizedCustomerData = {
+        name: nameValidation.sanitized,
+        email: sanitizeInput(formData.email.toLowerCase()), // Normalize email case
+        phone: sanitizeInput(formData.phone),
+        position: sanitizeInput(formData.position),
+        company_id: formData.company_id // UUID, no sanitization needed
       };
 
       if (editingCustomer) {
-        await updateCustomer(editingCustomer.id, customerData);
+        await updateCustomer(editingCustomer.id, sanitizedCustomerData);
         toast({
           title: "Success",
           description: "Customer updated successfully",
         });
       } else {
-        await addCustomer(customerData);
+        await addCustomer(sanitizedCustomerData);
         toast({
           title: "Success",
           description: "Customer added successfully",
@@ -61,6 +91,7 @@ const CustomerManagement = () => {
 
       resetForm();
     } catch (error) {
+      console.error('Error saving customer:', error);
       // Error handling is done in the hook
     }
   };
@@ -84,14 +115,17 @@ const CustomerManagement = () => {
   };
 
   const handleDelete = async (customerId) => {
-    try {
-      await deleteCustomer(customerId);
-      toast({
-        title: "Success",
-        description: "Customer deleted successfully",
-      });
-    } catch (error) {
-      // Error handling is done in the hook
+    if (window.confirm('Are you sure you want to delete this customer?')) {
+      try {
+        await deleteCustomer(customerId);
+        toast({
+          title: "Success",
+          description: "Customer deleted successfully",
+        });
+      } catch (error) {
+        console.error('Error deleting customer:', error);
+        // Error handling is done in the hook
+      }
     }
   };
 
@@ -142,8 +176,9 @@ const CustomerManagement = () => {
                   <Input
                     id="name"
                     value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, name: sanitizeInput(e.target.value) }))}
                     placeholder="Enter customer name"
+                    maxLength={50}
                     required
                   />
                 </div>
@@ -156,6 +191,7 @@ const CustomerManagement = () => {
                     value={formData.email}
                     onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                     placeholder="Enter email address"
+                    maxLength={100}
                     required
                   />
                 </div>
@@ -165,8 +201,9 @@ const CustomerManagement = () => {
                   <Input
                     id="phone"
                     value={formData.phone}
-                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, phone: sanitizeInput(e.target.value) }))}
                     placeholder="Enter phone number"
+                    maxLength={20}
                   />
                 </div>
 
@@ -175,8 +212,9 @@ const CustomerManagement = () => {
                   <Input
                     id="position"
                     value={formData.position}
-                    onChange={(e) => setFormData(prev => ({ ...prev, position: e.target.value }))}
+                    onChange={(e) => setFormData(prev => ({ ...prev, position: sanitizeInput(e.target.value) }))}
                     placeholder="Enter job position"
+                    maxLength={50}
                   />
                 </div>
 

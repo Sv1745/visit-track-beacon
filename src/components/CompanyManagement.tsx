@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useCompanies, Company } from '@/hooks/useCompanies';
 import { Button } from '@/components/ui/button';
@@ -12,12 +11,19 @@ import { CompanyForm } from './CompanyForm';
 import { CompanyMap } from './CompanyMap';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { sanitizeInput, validateCompanyName } from '@/utils/security';
 
 export const CompanyManagement = () => {
   const { companies, loading, addCompany, updateCompany, deleteCompany } = useCompanies();
   const [searchTerm, setSearchTerm] = useState('');
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
+  // Sanitize search input to prevent XSS
+  const handleSearchChange = (value: string) => {
+    const sanitizedValue = sanitizeInput(value);
+    setSearchTerm(sanitizedValue);
+  };
 
   const filteredCompanies = companies.filter(company =>
     company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -26,12 +32,33 @@ export const CompanyManagement = () => {
 
   const handleAddCompany = async (company: Omit<Company, 'id' | 'created_at' | 'user_id'>) => {
     try {
-      await addCompany(company);
+      // Validate and sanitize company data
+      const nameValidation = validateCompanyName(company.name);
+      if (!nameValidation.isValid) {
+        toast({
+          title: "Validation Error",
+          description: nameValidation.error,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const sanitizedCompany = {
+        ...company,
+        name: nameValidation.sanitized,
+        type: sanitizeInput(company.type),
+        address: company.address ? sanitizeInput(company.address) : undefined,
+        phone: company.phone ? sanitizeInput(company.phone) : undefined,
+        logo: company.logo // Logo URLs are handled separately and should be validated by the form
+      };
+
+      await addCompany(sanitizedCompany);
       toast({
         title: "Success",
         description: "Company added successfully",
       });
     } catch (error) {
+      console.error('Error adding company:', error);
       toast({
         title: "Error",
         description: "Failed to add company",
@@ -44,7 +71,27 @@ export const CompanyManagement = () => {
     if (!editingCompany) return;
     
     try {
-      await updateCompany(editingCompany.id, company);
+      // Validate and sanitize company data
+      const nameValidation = validateCompanyName(company.name);
+      if (!nameValidation.isValid) {
+        toast({
+          title: "Validation Error",
+          description: nameValidation.error,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const sanitizedCompany = {
+        ...company,
+        name: nameValidation.sanitized,
+        type: sanitizeInput(company.type),
+        address: company.address ? sanitizeInput(company.address) : undefined,
+        phone: company.phone ? sanitizeInput(company.phone) : undefined,
+        logo: company.logo
+      };
+
+      await updateCompany(editingCompany.id, sanitizedCompany);
       toast({
         title: "Success",
         description: "Company updated successfully",
@@ -52,6 +99,7 @@ export const CompanyManagement = () => {
       setIsEditDialogOpen(false);
       setEditingCompany(null);
     } catch (error) {
+      console.error('Error updating company:', error);
       toast({
         title: "Error",
         description: "Failed to update company",
@@ -69,6 +117,7 @@ export const CompanyManagement = () => {
           description: "Company deleted successfully",
         });
       } catch (error) {
+        console.error('Error deleting company:', error);
         toast({
           title: "Error",
           description: "Failed to delete company",
@@ -111,8 +160,9 @@ export const CompanyManagement = () => {
               <Input
                 placeholder="Search companies..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-10"
+                maxLength={50} // Limit search input length
               />
             </div>
           </div>
